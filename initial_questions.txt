@@ -1,0 +1,59 @@
+ Questions to clarify the scope:
+
+   1. Analysis Granularity
+
+     - When you say "see the result of such settings", what level of detail do you envision?  
+       - Simple: "Cluster operational ✓" vs "Cluster failed ✗"   [yes] in case of galera nodes we may also add which nodes are part of a primary segment
+       - Detailed: "2/3 nodes operational, MaxScale routing to node1 and node2, writes blocked, reads working" [yes]      
+       - Step-by-step: "t=0: node1 fails → t+5s: MaxScale marks node1 down → t+10s: Galera reforms quorum"  [no]  not now
+
+   2. Failure Scenario Generation
+
+     - Should the tool:
+       - Let users manually select which nodes/links fail? (interactive "what-if")     [yes] selectable option
+       - Auto-generate all possible failure combinations? (exhaustive analysis)        [yes] selectable option
+       - Focus on "interesting" scenarios (common split-brains, majority loss, etc.)?  [yes] selectable option
+
+   3. MaxScale Specifics
+
+     - Which MaxScale version/features are you targeting?        
+     - Cooperative monitoring is key - should we also model:      
+       - Multiple MaxScale instances with shared state?         [no]
+       - MaxScale failover using keepalived/VIPs?               [no]
+       - Read/write splitting behavior during degraded states?  [yes] considering that in cooperative monitoring maxscale marks all nodes as read-only when it loses majority
+
+   4. Galera Specifics
+
+     - Are you considering:
+       - Different cluster sizes (3-node, 5-node, arbitrator nodes)?    [yes]
+       - Geographic distribution (latency impact)?			[yes] and galera wan settings
+       - Different pc.weight configurations per node?			[yes]
+       - Bootstrap scenarios after total cluster failure?		[no] not now
+
+   5. "HA Features" Output
+
+     - What does the F(topology, settings) = ha_features output look like in your mind?
+       - List of tolerable failures: "Can survive: any 1 node failure, cannot survive: 2 nodes in same subnet"   [yes]
+       - Metrics: "Availability: 99.9%, MTTR: 10s, Max data loss: 0 transactions"				 [no]	
+       - Visual: Heat map/matrix showing green/yellow/red for different failure combinations?			 [yes]
+
+   6. User Journey What's the typical workflow you envision?
+
+     - User defines topology (how many clicks/steps?)			[yes] 1.define subnets/wan 2. define number of virtual/physical servers 3. define number and location of galera db nodes, 4. define number and location of maxscale nodes  (maxscale nodes can be co-located with mariadb nodes) 
+     - User tweaks HA settings (per-node or bulk?)			[yes] per-node
+     - User sees analysis (immediately or on-demand?)			[yes] on demand
+     - User iterates (what prompts them to change settings?)		[yes] on request to analyze the effect of different settings
+
+   7. Real-world Use Case
+
+     - Who's the target user? (DBAs planning deployments, architects reviewing designs, ops doing post-mortems?)    [yes]  planning the galera quorum, timeout settings and maxscale cooperative monitoring settings to withstand the desired failure scenarios. there are multiple things that can go wrong and each has some sort of probability, the aim of the tool is to tailor settings of galera and maxscale to withstand most probable failure scenarios.
+     - What decision does this tool help them make?  [yes] Tune settings of galera nodes and maxscale to assure the lowest service downtime. Consider that failure can be of different types:   hardware failure, os failure, network failure, service (mariadb) failure, network partitions, the aim is to build a tool that helps studying different failure scenarios and which settings would lead to theoretical best outcome, that is the setting that deal with the most probable failure scenarios. 
+     
+     
+     
+     - Technology preference: Are you comfortable with React/TypeScript, or prefer something else?   I plan to use the tool on linux, anything that works here it's good
+     - Deployment: Should this be a web app (runs in browser) or desktop app (Electron)?    browser and portable
+     - Initial scope: Should we start with basic 3-node Galera + 2 MaxScale topology, then expand? Or flexible from the start?   it has to be fully configurable, nothing hardcoded, it has to be a flexible, expandable, robust tool from the start, we can make little steps but it has to be a rock solid reliable tool.
+     
+
+
