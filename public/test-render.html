@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Test</title>
+    <script type="module">
+        // Inline test - bypass any caching
+        import { StrictMode, createElement } from 'http://localhost:5173/node_modules/.vite/deps/react.js';
+        import { createRoot } from 'http://localhost:5173/node_modules/.vite/deps/react-dom_client.js';
+        
+        console.log('Test: Imports loaded');
+        
+        const App = () => createElement('div', { style: { padding: '20px', background: '#f0f0f0' } },
+            createElement('h1', { style: { color: 'red' } }, 'TEST - React is working!'),
+            createElement('p', null, 'If you see this, React is rendering.')
+        );
+        
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('Test: DOM loaded');
+            const root = document.getElementById('root');
+            console.log('Test: Root element:', root);
+            if (root) {
+                createRoot(root).render(createElement(App));
+                console.log('Test: Rendered!');
+            }
+        });
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+</body>
+</html>

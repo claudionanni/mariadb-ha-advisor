@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Layout } from './components/common/Layout';
-import { TabNavigation, TabType } from './components/common/TabNavigation';
+import { TabNavigation } from './components/common/TabNavigation';
+import type { TabType } from './components/common/TabNavigation';
 import { TopologyView } from './components/topology-editor/TopologyView';
 import { SettingsView } from './components/settings/SettingsView';
 import { AnalysisView } from './components/analysis/AnalysisView';
