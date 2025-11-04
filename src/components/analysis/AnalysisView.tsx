@@ -1,8 +1,13 @@
+import { useState } from 'react';
 import { useTopologyStore } from '../../store/topologyStore';
 import { ScenarioRunner } from './ScenarioRunner';
+import { BatchAnalysis } from './BatchAnalysis';
+
+type AnalysisMode = 'single' | 'batch';
 
 export function AnalysisView() {
   const topology = useTopologyStore((state) => state.topology);
+  const [mode, setMode] = useState<AnalysisMode>('single');
   
   const hasTopology = topology.galeraNodes.length > 0;
 
@@ -28,7 +33,49 @@ export function AnalysisView() {
           </ol>
         </div>
       ) : (
-        <ScenarioRunner />
+        <>
+          {/* Mode Selector */}
+          <div className="bg-white rounded-lg border border-gray-200 p-4">
+            <div className="flex gap-2">
+              <button
+                onClick={() => setMode('single')}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  mode === 'single'
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span>🎯</span>
+                  <div className="text-left">
+                    <div className="text-sm">Single Scenario</div>
+                    <div className="text-xs opacity-75">Test individual failures</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setMode('batch')}
+                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                  mode === 'batch'
+                    ? 'bg-purple-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span>⚡</span>
+                  <div className="text-left">
+                    <div className="text-sm">Batch Analysis</div>
+                    <div className="text-xs opacity-75">Test all combinations</div>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Content */}
+          {mode === 'single' ? <ScenarioRunner /> : <BatchAnalysis />}
+        </>
       )}
     </div>
   );
