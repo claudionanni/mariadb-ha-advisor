@@ -65,9 +65,20 @@ export class MaxScaleRoutingEngine {
       const hasLock = lockHolder === maxscaleNode.id;
 
       // Determine if MaxScale can route
-      // For async replica: cooperative monitoring is essential
+      // For async replica with cooperative monitoring: 
+      // - If lockType is set AND there's a lock holder, only the lock holder can route
+      // - If lockType is set but no lock holder exists, no one can route
+      // - If no lockType, anyone with visible nodes can route
       const lockType = maxscaleNode.settings.cooperativeMonitoringLocks;
-      const canRoute = lockType ? hasLock && visibleNodes.length > 0 : visibleNodes.length > 0;
+      let canRoute = false;
+      
+      if (!lockType) {
+        // No cooperative monitoring - can route if sees any nodes
+        canRoute = visibleNodes.length > 0;
+      } else {
+        // Cooperative monitoring enabled - only lock holder can route
+        canRoute = hasLock && visibleNodes.length > 0;
+      }
 
       maxscaleStates.push({
         nodeId: maxscaleNode.id,
