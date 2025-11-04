@@ -158,6 +158,7 @@ export function InteractiveScenarioBuilder() {
       <NetworkStateVisualization
         failedNodes={failedNodes}
         failedLinks={failedLinks}
+        failedServers={failedServers}
         onToggleLinkFailure={toggleLinkFailure}
       />
 

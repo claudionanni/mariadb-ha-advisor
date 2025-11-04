@@ -97,7 +97,12 @@ export interface MaxScaleSettings {
 // Topology
 // ============================================================================
 
+export type ClusterType = 'galera' | 'async_replica';
+
 export interface Topology {
+  id?: string;
+  name: string;
+  clusterType: ClusterType;
   subnets: Subnet[];
   subnetLinks: SubnetLink[];
   servers: Server[];

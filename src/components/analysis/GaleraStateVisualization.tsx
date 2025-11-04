@@ -27,6 +27,19 @@ export function GaleraStateVisualization({ state }: GaleraStateVisualizationProp
         Galera Cluster State
       </h4>
 
+      {/* Important Note about Simultaneous Failures */}
+      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+        <div className="flex items-start gap-2">
+          <span className="text-lg">ℹ️</span>
+          <div className="text-sm text-blue-900">
+            <strong>Note:</strong> Marking nodes as "down" simulates <strong>simultaneous failures</strong>. 
+            In production, if nodes fail sequentially with sufficient time between failures (a few seconds), 
+            Galera recalculates quorum dynamically. A 10-node cluster can survive 9 sequential failures, 
+            but may lose quorum if multiple nodes fail simultaneously.
+          </div>
+        </div>
+      </div>
+
       {/* Quorum Info */}
       <div className="mb-4 p-3 bg-emerald-50 rounded-lg border border-emerald-200">
         <div className="grid grid-cols-3 gap-4 text-sm">

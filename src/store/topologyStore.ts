@@ -15,6 +15,9 @@ interface TopologyState {
   topology: Topology;
   
   // Actions for topology management
+  setTopologyName: (name: string) => void;
+  setClusterType: (clusterType: 'galera' | 'async_replica') => void;
+  
   addSubnet: (subnet: Subnet) => void;
   updateSubnet: (id: string, subnet: Partial<Subnet>) => void;
   removeSubnet: (id: string) => void;
@@ -52,6 +55,8 @@ interface TopologyState {
 }
 
 const initialTopology: Topology = {
+  name: 'Untitled Configuration',
+  clusterType: 'galera',
   subnets: [],
   subnetLinks: [],
   servers: [],
@@ -63,6 +68,17 @@ export const useTopologyStore = create<TopologyState>((set) => ({
   topology: initialTopology,
   scenarios: [],
   analysisResults: {},
+  
+  // Topology metadata
+  setTopologyName: (name) =>
+    set((state) => ({
+      topology: { ...state.topology, name },
+    })),
+  
+  setClusterType: (clusterType) =>
+    set((state) => ({
+      topology: { ...state.topology, clusterType },
+    })),
   
   // Subnet actions
   addSubnet: (subnet) =>

@@ -10,6 +10,7 @@ import { GaleraNodeList } from './GaleraNodeList';
 import { MaxScaleNodeForm } from './MaxScaleNodeForm';
 import { MaxScaleNodeList } from './MaxScaleNodeList';
 import { TopologyActions } from './TopologyActions';
+import { TopologyMetadataForm } from './TopologyMetadataForm';
 import type { Subnet, SubnetLink, Server, GaleraNode, MaxScaleNode } from '../../types';
 
 type FormType = 'subnet' | 'link' | 'server' | 'galera' | 'maxscale' | null;
@@ -67,6 +68,9 @@ export function TopologyView() {
 
   return (
     <div className="space-y-6">
+      {/* Configuration Metadata */}
+      <TopologyMetadataForm />
+
       {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">

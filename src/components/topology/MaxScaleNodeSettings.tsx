@@ -8,6 +8,7 @@ interface MaxScaleNodeSettingsProps {
 
 export function MaxScaleNodeSettings({ node }: MaxScaleNodeSettingsProps) {
   const updateMaxScaleNode = useTopologyStore((state) => state.updateMaxScaleNode);
+  const clusterType = useTopologyStore((state) => state.topology.clusterType);
   const [isEditing, setIsEditing] = useState(false);
   const [lockType, setLockType] = useState(node.settings.cooperativeMonitoringLocks || 'none');
 
@@ -35,6 +36,17 @@ export function MaxScaleNodeSettings({ node }: MaxScaleNodeSettingsProps) {
       default: return type;
     }
   };
+
+  // For Galera clusters, cooperative monitoring is not relevant
+  if (clusterType === 'galera') {
+    return (
+      <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
+        <span className="italic">
+          Routing only (Galera handles replication)
+        </span>
+      </div>
+    );
+  }
 
   if (!isEditing) {
     return (

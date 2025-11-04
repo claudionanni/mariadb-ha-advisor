@@ -8,6 +8,7 @@ interface GaleraNodeSettingsProps {
 
 export function GaleraNodeSettings({ node }: GaleraNodeSettingsProps) {
   const updateGaleraNode = useTopologyStore((state) => state.updateGaleraNode);
+  const clusterType = useTopologyStore((state) => state.topology.clusterType);
   const [isEditing, setIsEditing] = useState(false);
   const [weight, setWeight] = useState(node.settings.pcWeight.toString());
 
@@ -32,6 +33,17 @@ export function GaleraNodeSettings({ node }: GaleraNodeSettingsProps) {
     setWeight(node.settings.pcWeight.toString());
     setIsEditing(false);
   };
+
+  // For async replica clusters, weight is not relevant (only 1 primary + N replicas)
+  if (clusterType === 'async_replica') {
+    return (
+      <div className="flex items-center gap-2 text-xs text-gray-600 mt-1">
+        <span className="italic">
+          Primary/Replica (no quorum weight)
+        </span>
+      </div>
+    );
+  }
 
   if (!isEditing) {
     return (
