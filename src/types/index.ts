@@ -31,15 +31,29 @@ export interface Server {
 }
 
 // ============================================================================
-// Galera Node Configuration
+// Database Node Configuration
 // ============================================================================
+
+export type DatabaseNodeType = 'galera' | 'async_replica';
 
 export interface GaleraNode {
   id: string;
   name: string;
   serverId: string;
+  nodeType: 'galera';
   settings: GaleraSettings;
 }
+
+export interface AsyncReplicaNode {
+  id: string;
+  name: string;
+  serverId: string;
+  nodeType: 'async_replica';
+  role: 'primary' | 'replica';
+  settings: AsyncReplicaSettings;
+}
+
+export type DatabaseNode = GaleraNode | AsyncReplicaNode;
 
 export interface GaleraSettings {
   // Primary Component (PC) settings
@@ -62,6 +76,19 @@ export interface GaleraSettings {
   autoEvict?: number; // Auto-evict nodes after N failures
 }
 
+export interface AsyncReplicaSettings {
+  // Replication settings
+  replicationLag?: number; // Seconds behind primary
+  readOnly?: boolean; // Read-only replica
+  
+  // Connection settings
+  connectRetryCount?: number;
+  connectRetryInterval?: number; // Seconds
+  
+  // Failover settings
+  priority?: number; // Higher priority replicas are preferred for promotion
+}
+
 // ============================================================================
 // MaxScale Node Configuration
 // ============================================================================
@@ -78,19 +105,22 @@ export interface MaxScaleSettings {
   monitorInterval: number; // Milliseconds
   monitorTimeoutMs?: number;
   
-  // Cooperative monitoring - determines how MaxScale acquires locks on Galera backends
+  // Cooperative monitoring - ONLY for async_replica clusters via mariadbmon
+  // Determines how MaxScale acquires locks on backends for automatic failover
   // Only ONE MaxScale holds locks at any time (via SELECT GET_LOCK())
-  // - majority_of_all: Must acquire locks on majority of ALL configured Galera nodes
-  // - majority_of_running: Must acquire locks on majority of RUNNING Galera nodes
-  // - undefined: No cooperative monitoring, all MaxScale instances monitor independently
+  // - majority_of_all: Must acquire locks on majority of ALL configured nodes
+  // - majority_of_running: Must acquire locks on majority of RUNNING nodes
+  // - undefined: No cooperative monitoring (used for Galera clusters)
+  // NOTE: Galera clusters don't need cooperative monitoring - MaxScale only routes traffic
   cooperativeMonitoringLocks?: 'majority_of_all' | 'majority_of_running';
   
   // Backend server priorities
-  serverPriorities?: Record<string, number>; // galeraNodeId -> priority
+  serverPriorities?: Record<string, number>; // databaseNodeId -> priority
   
-  // Failover settings
+  // Failover settings (only applicable for async_replica clusters)
   autoFailover?: boolean;
   failoverTimeout?: number; // Seconds
+  switchoverOnLowDiskSpace?: boolean;
 }
 
 // ============================================================================
@@ -106,8 +136,11 @@ export interface Topology {
   subnets: Subnet[];
   subnetLinks: SubnetLink[];
   servers: Server[];
-  galeraNodes: GaleraNode[];
+  databaseNodes: DatabaseNode[]; // Replaces galeraNodes - can be Galera or Async Replica
   maxscaleNodes: MaxScaleNode[];
+  
+  // Deprecated - kept for backward compatibility during migration
+  galeraNodes?: GaleraNode[];
 }
 
 // ============================================================================

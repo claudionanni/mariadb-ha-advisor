@@ -1,21 +1,20 @@
 import { useState } from 'react';
 import { useTopologyStore } from '../../store/topologyStore';
-import type { GaleraNode } from '../../types';
-import { GaleraNodeSettings } from '../topology/GaleraNodeSettings';
+import type { AsyncReplicaNode } from '../../types';
 
-interface GaleraNodeListProps {
-  onEdit: (node: GaleraNode) => void;
+interface AsyncReplicaNodeListProps {
+  onEdit: (node: AsyncReplicaNode) => void;
 }
 
-export function GaleraNodeList({ onEdit }: GaleraNodeListProps) {
+export function AsyncReplicaNodeList({ onEdit }: AsyncReplicaNodeListProps) {
   const databaseNodes = useTopologyStore((state) => state.topology.databaseNodes);
   const servers = useTopologyStore((state) => state.topology.servers);
   const subnets = useTopologyStore((state) => state.topology.subnets);
-  const removeGaleraNode = useTopologyStore((state) => state.removeGaleraNode);
+  const removeDatabaseNode = useTopologyStore((state) => state.removeDatabaseNode);
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
-  // Filter only Galera nodes
-  const galeraNodes = databaseNodes.filter(n => n.nodeType === 'galera') as GaleraNode[];
+  // Filter only async replica nodes
+  const asyncNodes = databaseNodes.filter(n => n.nodeType === 'async_replica') as AsyncReplicaNode[];
 
   const getServerInfo = (serverId: string) => {
     const server = servers.find(s => s.id === serverId);
@@ -31,7 +30,7 @@ export function GaleraNodeList({ onEdit }: GaleraNodeListProps) {
 
   const handleDelete = (id: string) => {
     if (deletingId === id) {
-      removeGaleraNode(id);
+      removeDatabaseNode(id);
       setDeletingId(null);
     } else {
       setDeletingId(id);
@@ -39,36 +38,44 @@ export function GaleraNodeList({ onEdit }: GaleraNodeListProps) {
     }
   };
 
-  if (galeraNodes.length === 0) {
+  if (asyncNodes.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        <p>No Galera nodes defined yet.</p>
-        <p className="text-sm mt-1">Add Galera database nodes to your cluster.</p>
+        <p>No async replica nodes defined yet.</p>
+        <p className="text-sm mt-1">Add primary and replica nodes to your cluster.</p>
       </div>
     );
   }
 
-  // Calculate total weight for quorum info
-  const totalWeight = galeraNodes.reduce((sum, node) => sum + node.settings.pcWeight, 0);
-  const quorumWeight = Math.floor(totalWeight / 2) + 1;
+  // Find primary and replicas
+  const primary = asyncNodes.find(n => n.role === 'primary');
+  const replicas = asyncNodes.filter(n => n.role === 'replica');
 
   return (
     <div className="space-y-4">
-      {/* Quorum Info */}
+      {/* Cluster Info */}
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="text-blue-800">
-            <strong>Cluster Status:</strong> {galeraNodes.length} node(s) | Total Weight: {totalWeight}
+            <strong>Cluster Status:</strong> {asyncNodes.length} node(s)
           </span>
           <span className="text-blue-800">
-            <strong>Quorum:</strong> {quorumWeight} votes needed
+            <strong>Primary:</strong> {primary ? '1' : '0'} | <strong>Replicas:</strong> {replicas.length}
           </span>
         </div>
       </div>
 
+      {!primary && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <p className="text-sm text-amber-800">
+            ⚠️ <strong>Warning:</strong> No primary node defined. Add a primary node to enable replication.
+          </p>
+        </div>
+      )}
+
       {/* Node List */}
       <div className="space-y-2">
-        {galeraNodes.map((node) => {
+        {asyncNodes.map((node) => {
           const serverInfo = getServerInfo(node.serverId);
           return (
             <div
@@ -79,8 +86,12 @@ export function GaleraNodeList({ onEdit }: GaleraNodeListProps) {
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
                     <h5 className="font-medium text-gray-900">{node.name}</h5>
-                    <span className="px-2 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded">
-                      Galera
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+                      node.role === 'primary' 
+                        ? 'bg-purple-100 text-purple-800' 
+                        : 'bg-blue-100 text-blue-800'
+                    }`}>
+                      {node.role === 'primary' ? 'Primary' : 'Replica'}
                     </span>
                   </div>
                   <div className="mt-2 flex flex-wrap items-center gap-4 text-sm text-gray-600">
@@ -92,10 +103,19 @@ export function GaleraNodeList({ onEdit }: GaleraNodeListProps) {
                       {serverInfo.isVirtual && <span className="ml-1 text-xs text-gray-500">(VM)</span>}
                     </span>
                     <span>Subnet: {serverInfo.subnet}</span>
+                    {node.role === 'replica' && node.settings.priority !== undefined && (
+                      <span>Priority: {node.settings.priority}</span>
+                    )}
                   </div>
                   
-                  {/* Settings Editor */}
-                  <GaleraNodeSettings node={node} />
+                  {/* Role Description */}
+                  <div className="mt-2 text-xs text-gray-600">
+                    {node.role === 'primary' ? (
+                      <span>Handles all write operations and replicates to replicas</span>
+                    ) : (
+                      <span>Read-only replica, can be promoted to primary during failover</span>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="flex gap-2 ml-4">

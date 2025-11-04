@@ -4,7 +4,9 @@ import type {
   Subnet,
   SubnetLink,
   Server, 
-  GaleraNode, 
+  DatabaseNode,
+  GaleraNode,
+  AsyncReplicaNode,
   MaxScaleNode,
   FailureScenario,
   AnalysisResult 
@@ -30,6 +32,11 @@ interface TopologyState {
   updateServer: (id: string, server: Partial<Server>) => void;
   removeServer: (id: string) => void;
   
+  addDatabaseNode: (node: DatabaseNode) => void;
+  updateDatabaseNode: (id: string, updates: Partial<DatabaseNode>) => void;
+  removeDatabaseNode: (id: string) => void;
+  
+  // Legacy support - deprecated but kept for backward compatibility
   addGaleraNode: (node: GaleraNode) => void;
   updateGaleraNode: (id: string, node: Partial<GaleraNode>) => void;
   removeGaleraNode: (id: string) => void;
@@ -60,8 +67,16 @@ const initialTopology: Topology = {
   subnets: [],
   subnetLinks: [],
   servers: [],
-  galeraNodes: [],
+  databaseNodes: [],
   maxscaleNodes: [],
+};
+
+// Helper to get galera nodes from databaseNodes (backward compatibility)
+const getGaleraNodes = (topology: Topology): GaleraNode[] => {
+  if (topology.galeraNodes && topology.galeraNodes.length > 0) {
+    return topology.galeraNodes;
+  }
+  return topology.databaseNodes.filter(n => n.nodeType === 'galera') as GaleraNode[];
 };
 
 export const useTopologyStore = create<TopologyState>((set) => ({
@@ -161,12 +176,39 @@ export const useTopologyStore = create<TopologyState>((set) => ({
       },
     })),
   
-  // Galera node actions
+  // Database node actions (new unified interface)
+  addDatabaseNode: (node) =>
+    set((state) => ({
+      topology: {
+        ...state.topology,
+        databaseNodes: [...state.topology.databaseNodes, node],
+      },
+    })),
+    
+  updateDatabaseNode: (id, updates) =>
+    set((state) => ({
+      topology: {
+        ...state.topology,
+        databaseNodes: state.topology.databaseNodes.map((n) =>
+          n.id === id ? { ...n, ...updates } as DatabaseNode : n
+        ),
+      },
+    })),
+    
+  removeDatabaseNode: (id) =>
+    set((state) => ({
+      topology: {
+        ...state.topology,
+        databaseNodes: state.topology.databaseNodes.filter((n) => n.id !== id),
+      },
+    })),
+  
+  // Legacy Galera node actions - delegates to databaseNodes
   addGaleraNode: (node) =>
     set((state) => ({
       topology: {
         ...state.topology,
-        galeraNodes: [...state.topology.galeraNodes, node],
+        databaseNodes: [...state.topology.databaseNodes, { ...node, nodeType: 'galera' as const }],
       },
     })),
     
@@ -174,8 +216,8 @@ export const useTopologyStore = create<TopologyState>((set) => ({
     set((state) => ({
       topology: {
         ...state.topology,
-        galeraNodes: state.topology.galeraNodes.map((n) =>
-          n.id === id ? { ...n, ...updates } : n
+        databaseNodes: state.topology.databaseNodes.map((n) =>
+          n.id === id && n.nodeType === 'galera' ? { ...n, ...updates } as DatabaseNode : n
         ),
       },
     })),
@@ -184,7 +226,7 @@ export const useTopologyStore = create<TopologyState>((set) => ({
     set((state) => ({
       topology: {
         ...state.topology,
-        galeraNodes: state.topology.galeraNodes.filter((n) => n.id !== id),
+        databaseNodes: state.topology.databaseNodes.filter((n) => n.id !== id),
       },
     })),
   
@@ -216,7 +258,23 @@ export const useTopologyStore = create<TopologyState>((set) => ({
     })),
   
   // Bulk operations
-  loadTopology: (topology) => set({ topology }),
+  loadTopology: (topology) => {
+    // Handle backward compatibility: migrate galeraNodes to databaseNodes if needed
+    const migratedTopology = {
+      ...topology,
+      databaseNodes: topology.databaseNodes || [],
+    };
+    
+    // If old galeraNodes exists and databaseNodes is empty, migrate
+    if (topology.galeraNodes && topology.galeraNodes.length > 0 && migratedTopology.databaseNodes.length === 0) {
+      migratedTopology.databaseNodes = topology.galeraNodes.map(node => ({
+        ...node,
+        nodeType: 'galera' as const,
+      }));
+    }
+    
+    set({ topology: migratedTopology });
+  },
   
   resetTopology: () => set({ 
     topology: initialTopology, 

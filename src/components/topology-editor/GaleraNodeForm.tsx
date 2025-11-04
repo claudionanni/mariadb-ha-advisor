@@ -22,7 +22,7 @@ const DEFAULT_SETTINGS: GaleraSettings = {
 
 export function GaleraNodeForm({ onCancel, editingNode }: GaleraNodeFormProps) {
   const servers = useTopologyStore((state) => state.topology.servers);
-  const galeraNodes = useTopologyStore((state) => state.topology.galeraNodes);
+  const databaseNodes = useTopologyStore((state) => state.topology.databaseNodes);
   const addGaleraNode = useTopologyStore((state) => state.addGaleraNode);
   const updateGaleraNode = useTopologyStore((state) => state.updateGaleraNode);
   
@@ -31,9 +31,9 @@ export function GaleraNodeForm({ onCancel, editingNode }: GaleraNodeFormProps) {
   const [pcWeight, setPcWeight] = useState(editingNode?.settings.pcWeight.toString() || '1');
   const [error, setError] = useState('');
 
-  // Filter out servers that already have Galera nodes
+  // Filter out servers that already have database nodes
   const occupiedServerIds = new Set(
-    galeraNodes.filter(n => n.id !== editingNode?.id).map(n => n.serverId)
+    databaseNodes.filter(n => n.id !== editingNode?.id).map(n => n.serverId)
   );
   const availableServers = servers.filter(s => !occupiedServerIds.has(s.id));
 

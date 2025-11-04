@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useTopologyStore } from '../../store/topologyStore';
 import { SubnetForm } from './SubnetForm';
 import { SubnetList } from './SubnetList';
 import { SubnetLinkForm } from './SubnetLinkForm';
@@ -7,20 +8,24 @@ import { ServerForm } from './ServerForm';
 import { ServerList } from './ServerList';
 import { GaleraNodeForm } from './GaleraNodeForm';
 import { GaleraNodeList } from './GaleraNodeList';
+import { AsyncReplicaNodeForm } from './AsyncReplicaNodeForm';
+import { AsyncReplicaNodeList } from './AsyncReplicaNodeList';
 import { MaxScaleNodeForm } from './MaxScaleNodeForm';
 import { MaxScaleNodeList } from './MaxScaleNodeList';
 import { TopologyActions } from './TopologyActions';
 import { TopologyMetadataForm } from './TopologyMetadataForm';
-import type { Subnet, SubnetLink, Server, GaleraNode, MaxScaleNode } from '../../types';
+import type { Subnet, SubnetLink, Server, GaleraNode, AsyncReplicaNode, MaxScaleNode } from '../../types';
 
-type FormType = 'subnet' | 'link' | 'server' | 'galera' | 'maxscale' | null;
+type FormType = 'subnet' | 'link' | 'server' | 'galera' | 'async_replica' | 'maxscale' | null;
 
 export function TopologyView() {
+  const topology = useTopologyStore((state) => state.topology);
   const [activeForm, setActiveForm] = useState<FormType>(null);
   const [editingSubnet, setEditingSubnet] = useState<Subnet | undefined>(undefined);
   const [editingLink, setEditingLink] = useState<SubnetLink | undefined>(undefined);
   const [editingServer, setEditingServer] = useState<Server | undefined>(undefined);
   const [editingGalera, setEditingGalera] = useState<GaleraNode | undefined>(undefined);
+  const [editingAsyncReplica, setEditingAsyncReplica] = useState<AsyncReplicaNode | undefined>(undefined);
   const [editingMaxScale, setEditingMaxScale] = useState<MaxScaleNode | undefined>(undefined);
 
   const handleEditSubnet = (subnet: Subnet) => {
@@ -43,6 +48,11 @@ export function TopologyView() {
     setActiveForm('galera');
   };
 
+  const handleEditAsyncReplica = (node: AsyncReplicaNode) => {
+    setEditingAsyncReplica(node);
+    setActiveForm('async_replica');
+  };
+
   const handleEditMaxScale = (node: MaxScaleNode) => {
     setEditingMaxScale(node);
     setActiveForm('maxscale');
@@ -54,6 +64,7 @@ export function TopologyView() {
     setEditingLink(undefined);
     setEditingServer(undefined);
     setEditingGalera(undefined);
+    setEditingAsyncReplica(undefined);
     setEditingMaxScale(undefined);
   };
 
@@ -62,6 +73,7 @@ export function TopologyView() {
     setEditingLink(undefined);
     setEditingServer(undefined);
     setEditingGalera(undefined);
+    setEditingAsyncReplica(undefined);
     setEditingMaxScale(undefined);
     setActiveForm(type);
   };
@@ -105,12 +117,21 @@ export function TopologyView() {
               >
                 + Server
               </button>
-              <button
-                onClick={() => handleShowForm('galera')}
-                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-              >
-                + Galera Node
-              </button>
+              {topology.clusterType === 'galera' ? (
+                <button
+                  onClick={() => handleShowForm('galera')}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                >
+                  + Galera Node
+                </button>
+              ) : (
+                <button
+                  onClick={() => handleShowForm('async_replica')}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+                >
+                  + Async Replica Node
+                </button>
+              )}
               <button
                 onClick={() => handleShowForm('maxscale')}
                 className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
@@ -135,6 +156,9 @@ export function TopologyView() {
       {activeForm === 'galera' && (
         <GaleraNodeForm editingNode={editingGalera} onCancel={handleCancelForm} />
       )}
+      {activeForm === 'async_replica' && (
+        <AsyncReplicaNodeForm editingNode={editingAsyncReplica} onCancel={handleCancelForm} />
+      )}
       {activeForm === 'maxscale' && (
         <MaxScaleNodeForm editingNode={editingMaxScale} onCancel={handleCancelForm} />
       )}
@@ -157,11 +181,18 @@ export function TopologyView() {
         <ServerList onEdit={handleEditServer} />
       </div>
 
-      {/* Galera Nodes List */}
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-medium mb-4">Galera Database Nodes</h3>
-        <GaleraNodeList onEdit={handleEditGalera} />
-      </div>
+      {/* Database Nodes List */}
+      {topology.clusterType === 'galera' ? (
+        <div className="bg-gray-50 rounded-lg p-6">
+          <h3 className="text-lg font-medium mb-4">Galera Database Nodes (Multi-Master)</h3>
+          <GaleraNodeList onEdit={handleEditGalera} />
+        </div>
+      ) : (
+        <div className="bg-gray-50 rounded-lg p-6">
+          <h3 className="text-lg font-medium mb-4">Async Replica Nodes (Primary-Replica)</h3>
+          <AsyncReplicaNodeList onEdit={handleEditAsyncReplica} />
+        </div>
+      )}
 
       {/* MaxScale Nodes List */}
       <div className="bg-gray-50 rounded-lg p-6">
