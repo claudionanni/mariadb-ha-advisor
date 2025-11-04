@@ -6,13 +6,20 @@
 // Network & Infrastructure
 // ============================================================================
 
-export type SubnetType = 'lan' | 'wan';
-
 export interface Subnet {
   id: string;
   name: string;
-  type: SubnetType;
-  latencyMs?: number; // For WAN connections
+  // All subnets are LAN - WAN is defined via links between subnets
+}
+
+export type LinkType = 'lan' | 'wan';
+
+export interface SubnetLink {
+  id: string;
+  subnet1Id: string;
+  subnet2Id: string;
+  linkType: LinkType;
+  latencyMs?: number; // For WAN links or high-latency LAN
 }
 
 export interface Server {
@@ -88,6 +95,7 @@ export interface MaxScaleSettings {
 
 export interface Topology {
   subnets: Subnet[];
+  subnetLinks: SubnetLink[];
   servers: Server[];
   galeraNodes: GaleraNode[];
   maxscaleNodes: MaxScaleNode[];

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTopologyStore } from '../../store/topologyStore';
-import type { Subnet, SubnetType } from '../../types';
+import type { Subnet } from '../../types';
 
 interface SubnetFormProps {
   onCancel?: () => void;
@@ -12,8 +12,6 @@ export function SubnetForm({ onCancel, editingSubnet }: SubnetFormProps) {
   const updateSubnet = useTopologyStore((state) => state.updateSubnet);
   
   const [name, setName] = useState(editingSubnet?.name || '');
-  const [type, setType] = useState<SubnetType>(editingSubnet?.type || 'lan');
-  const [latency, setLatency] = useState(editingSubnet?.latencyMs?.toString() || '');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,19 +24,9 @@ export function SubnetForm({ onCancel, editingSubnet }: SubnetFormProps) {
       return;
     }
 
-    if (type === 'wan' && latency) {
-      const latencyNum = parseInt(latency, 10);
-      if (isNaN(latencyNum) || latencyNum < 0) {
-        setError('Latency must be a positive number');
-        return;
-      }
-    }
-
     const subnetData: Subnet = {
       id: editingSubnet?.id || `subnet-${Date.now()}`,
       name: name.trim(),
-      type,
-      latencyMs: type === 'wan' && latency ? parseInt(latency, 10) : undefined,
     };
 
     if (editingSubnet) {
@@ -49,8 +37,6 @@ export function SubnetForm({ onCancel, editingSubnet }: SubnetFormProps) {
 
     // Reset form
     setName('');
-    setType('lan');
-    setLatency('');
     
     if (onCancel) onCancel();
   };
@@ -77,45 +63,13 @@ export function SubnetForm({ onCancel, editingSubnet }: SubnetFormProps) {
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="e.g., DC1-Primary"
+            placeholder="e.g., DC1-Primary, DC2-Backup"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
+          <p className="mt-1 text-xs text-gray-500">
+            All subnets are LAN by default. Define WAN links between subnets separately.
+          </p>
         </div>
-
-        <div>
-          <label htmlFor="subnet-type" className="block text-sm font-medium text-gray-700 mb-1">
-            Type *
-          </label>
-          <select
-            id="subnet-type"
-            value={type}
-            onChange={(e) => setType(e.target.value as SubnetType)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="lan">LAN (Local Area Network)</option>
-            <option value="wan">WAN (Wide Area Network)</option>
-          </select>
-        </div>
-
-        {type === 'wan' && (
-          <div>
-            <label htmlFor="subnet-latency" className="block text-sm font-medium text-gray-700 mb-1">
-              Latency (ms)
-            </label>
-            <input
-              id="subnet-latency"
-              type="number"
-              value={latency}
-              onChange={(e) => setLatency(e.target.value)}
-              placeholder="e.g., 50"
-              min="0"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              Typical latency for WAN connections (optional)
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="mt-6 flex gap-3">

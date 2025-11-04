@@ -19,7 +19,6 @@ const DEFAULT_SETTINGS: MaxScaleSettings = {
 export function MaxScaleNodeForm({ onCancel, editingNode }: MaxScaleNodeFormProps) {
   const servers = useTopologyStore((state) => state.topology.servers);
   const maxscaleNodes = useTopologyStore((state) => state.topology.maxscaleNodes);
-  const galeraNodes = useTopologyStore((state) => state.topology.galeraNodes);
   const addMaxScaleNode = useTopologyStore((state) => state.addMaxScaleNode);
   const updateMaxScaleNode = useTopologyStore((state) => state.updateMaxScaleNode);
   
@@ -30,11 +29,10 @@ export function MaxScaleNodeForm({ onCancel, editingNode }: MaxScaleNodeFormProp
   );
   const [error, setError] = useState('');
 
-  // Filter out servers that already have MaxScale nodes or Galera nodes
-  const occupiedServerIds = new Set([
-    ...maxscaleNodes.filter(n => n.id !== editingNode?.id).map(n => n.serverId),
-    ...galeraNodes.map(n => n.serverId),
-  ]);
+  // Filter out servers that already have MaxScale nodes (but allow Galera co-location)
+  const occupiedServerIds = new Set(
+    maxscaleNodes.filter(n => n.id !== editingNode?.id).map(n => n.serverId)
+  );
   const availableServers = servers.filter(s => !occupiedServerIds.has(s.id));
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -147,7 +145,7 @@ export function MaxScaleNodeForm({ onCancel, editingNode }: MaxScaleNodeFormProp
             ))}
           </select>
           <p className="mt-1 text-xs text-gray-500">
-            Note: MaxScale nodes cannot share servers with Galera nodes
+            Note: MaxScale can be co-located with Galera nodes on the same server
           </p>
         </div>
 

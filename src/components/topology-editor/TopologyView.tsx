@@ -1,19 +1,22 @@
 import { useState } from 'react';
 import { SubnetForm } from './SubnetForm';
 import { SubnetList } from './SubnetList';
+import { SubnetLinkForm } from './SubnetLinkForm';
+import { SubnetLinkList } from './SubnetLinkList';
 import { ServerForm } from './ServerForm';
 import { ServerList } from './ServerList';
 import { GaleraNodeForm } from './GaleraNodeForm';
 import { GaleraNodeList } from './GaleraNodeList';
 import { MaxScaleNodeForm } from './MaxScaleNodeForm';
 import { MaxScaleNodeList } from './MaxScaleNodeList';
-import type { Subnet, Server, GaleraNode, MaxScaleNode } from '../../types';
+import type { Subnet, SubnetLink, Server, GaleraNode, MaxScaleNode } from '../../types';
 
-type FormType = 'subnet' | 'server' | 'galera' | 'maxscale' | null;
+type FormType = 'subnet' | 'link' | 'server' | 'galera' | 'maxscale' | null;
 
 export function TopologyView() {
   const [activeForm, setActiveForm] = useState<FormType>(null);
   const [editingSubnet, setEditingSubnet] = useState<Subnet | undefined>(undefined);
+  const [editingLink, setEditingLink] = useState<SubnetLink | undefined>(undefined);
   const [editingServer, setEditingServer] = useState<Server | undefined>(undefined);
   const [editingGalera, setEditingGalera] = useState<GaleraNode | undefined>(undefined);
   const [editingMaxScale, setEditingMaxScale] = useState<MaxScaleNode | undefined>(undefined);
@@ -21,6 +24,11 @@ export function TopologyView() {
   const handleEditSubnet = (subnet: Subnet) => {
     setEditingSubnet(subnet);
     setActiveForm('subnet');
+  };
+
+  const handleEditLink = (link: SubnetLink) => {
+    setEditingLink(link);
+    setActiveForm('link');
   };
 
   const handleEditServer = (server: Server) => {
@@ -41,6 +49,7 @@ export function TopologyView() {
   const handleCancelForm = () => {
     setActiveForm(null);
     setEditingSubnet(undefined);
+    setEditingLink(undefined);
     setEditingServer(undefined);
     setEditingGalera(undefined);
     setEditingMaxScale(undefined);
@@ -48,6 +57,7 @@ export function TopologyView() {
 
   const handleShowForm = (type: FormType) => {
     setEditingSubnet(undefined);
+    setEditingLink(undefined);
     setEditingServer(undefined);
     setEditingGalera(undefined);
     setEditingMaxScale(undefined);
@@ -65,12 +75,18 @@ export function TopologyView() {
           </p>
         </div>
         {!activeForm && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => handleShowForm('subnet')}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             >
               + Subnet
+            </button>
+            <button
+              onClick={() => handleShowForm('link')}
+              className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+            >
+              + Link Subnets
             </button>
             <button
               onClick={() => handleShowForm('server')}
@@ -98,6 +114,9 @@ export function TopologyView() {
       {activeForm === 'subnet' && (
         <SubnetForm editingSubnet={editingSubnet} onCancel={handleCancelForm} />
       )}
+      {activeForm === 'link' && (
+        <SubnetLinkForm editingLink={editingLink} onCancel={handleCancelForm} />
+      )}
       {activeForm === 'server' && (
         <ServerForm editingServer={editingServer} onCancel={handleCancelForm} />
       )}
@@ -112,6 +131,12 @@ export function TopologyView() {
       <div className="bg-gray-50 rounded-lg p-6">
         <h3 className="text-lg font-medium mb-4">Network Subnets</h3>
         <SubnetList onEdit={handleEditSubnet} />
+      </div>
+
+      {/* Subnet Links List */}
+      <div className="bg-gray-50 rounded-lg p-6">
+        <h3 className="text-lg font-medium mb-4">Subnet Links</h3>
+        <SubnetLinkList onEdit={handleEditLink} />
       </div>
 
       {/* Server List */}

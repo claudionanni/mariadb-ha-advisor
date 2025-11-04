@@ -121,7 +121,7 @@ export function ServerForm({ onCancel, editingServer }: ServerFormProps) {
             <option value="">Select a subnet...</option>
             {subnets.map((subnet) => (
               <option key={subnet.id} value={subnet.id}>
-                {subnet.name} ({subnet.type.toUpperCase()})
+                {subnet.name}
               </option>
             ))}
           </select>

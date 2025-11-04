@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import type { 
   Topology, 
-  Subnet, 
+  Subnet,
+  SubnetLink,
   Server, 
   GaleraNode, 
   MaxScaleNode,
@@ -17,6 +18,10 @@ interface TopologyState {
   addSubnet: (subnet: Subnet) => void;
   updateSubnet: (id: string, subnet: Partial<Subnet>) => void;
   removeSubnet: (id: string) => void;
+  
+  addSubnetLink: (link: SubnetLink) => void;
+  updateSubnetLink: (id: string, link: Partial<SubnetLink>) => void;
+  removeSubnetLink: (id: string) => void;
   
   addServer: (server: Server) => void;
   updateServer: (id: string, server: Partial<Server>) => void;
@@ -48,6 +53,7 @@ interface TopologyState {
 
 const initialTopology: Topology = {
   subnets: [],
+  subnetLinks: [],
   servers: [],
   galeraNodes: [],
   maxscaleNodes: [],
@@ -82,6 +88,33 @@ export const useTopologyStore = create<TopologyState>((set) => ({
       topology: {
         ...state.topology,
         subnets: state.topology.subnets.filter((s) => s.id !== id),
+      },
+    })),
+  
+  // Subnet link actions
+  addSubnetLink: (link) =>
+    set((state) => ({
+      topology: {
+        ...state.topology,
+        subnetLinks: [...state.topology.subnetLinks, link],
+      },
+    })),
+    
+  updateSubnetLink: (id, updates) =>
+    set((state) => ({
+      topology: {
+        ...state.topology,
+        subnetLinks: state.topology.subnetLinks.map((l) =>
+          l.id === id ? { ...l, ...updates } : l
+        ),
+      },
+    })),
+    
+  removeSubnetLink: (id) =>
+    set((state) => ({
+      topology: {
+        ...state.topology,
+        subnetLinks: state.topology.subnetLinks.filter((l) => l.id !== id),
       },
     })),
   
