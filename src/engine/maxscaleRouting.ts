@@ -33,6 +33,9 @@ export class MaxScaleRoutingEngine {
       node => !this.isNodeDown(node.id, scenario)
     );
 
+    // Determine which MaxScale (if any) holds the cooperative lock
+    const lockHolder = this.determineLockHolder(runningMaxScale, totalMaxScale);
+
     for (const maxscaleNode of this.topology.maxscaleNodes) {
       const isDown = this.isNodeDown(maxscaleNode.id, scenario);
       
@@ -54,15 +57,14 @@ export class MaxScaleRoutingEngine {
         galeraState
       );
 
-      // Check if this MaxScale has the cooperative monitoring lock
-      const hasLock = this.hasCooperativeLock(
-        maxscaleNode,
-        runningMaxScale.length,
-        totalMaxScale
-      );
+      // Check if THIS specific MaxScale has the cooperative monitoring lock
+      const hasLock = lockHolder === maxscaleNode.id;
 
       // Determine if MaxScale can route
-      const canRoute = hasLock && visibleGaleraNodes.length > 0;
+      // With no locking (none), all can route if they see Galera nodes
+      const lockType = maxscaleNode.settings.cooperativeMonitoringLocks;
+      const canRoute = (!lockType || lockType === 'none' || hasLock) && 
+                       visibleGaleraNodes.length > 0;
 
       maxscaleStates.push({
         nodeId: maxscaleNode.id,
@@ -74,6 +76,44 @@ export class MaxScaleRoutingEngine {
     }
 
     return maxscaleStates;
+  }
+
+  /**
+   * Determine which MaxScale (if any) holds the cooperative monitoring lock
+   * Returns the nodeId of the lock holder, or null if no lock mechanism or no holder
+   */
+  private determineLockHolder(
+    runningMaxScale: MaxScaleNode[],
+    totalMaxScale: number
+  ): string | null {
+    if (runningMaxScale.length === 0) return null;
+
+    // Get the lock type from the first node (all should have same setting)
+    const lockType = runningMaxScale[0].settings.cooperativeMonitoringLocks;
+
+    if (!lockType || lockType === 'none') {
+      // No locking - all can independently monitor/route
+      return null;
+    }
+
+    if (lockType === 'majority_of_all') {
+      // Need majority of ALL instances (including down ones)
+      const requiredCount = Math.floor(totalMaxScale / 2) + 1;
+      if (runningMaxScale.length < requiredCount) {
+        // No majority - no lock holder
+        return null;
+      }
+      // First running instance gets the lock (deterministic for simulation)
+      return runningMaxScale[0].id;
+    }
+
+    if (lockType === 'majority_of_running') {
+      // Always have majority of running instances (by definition)
+      // First running instance gets the lock
+      return runningMaxScale[0].id;
+    }
+
+    return null;
   }
 
   /**
@@ -170,37 +210,6 @@ export class MaxScaleRoutingEngine {
     );
 
     return !linkFailure;
-  }
-
-  /**
-   * Determine if MaxScale has the cooperative monitoring lock
-   */
-  private hasCooperativeLock(
-    maxscaleNode: MaxScaleNode,
-    runningCount: number,
-    totalCount: number
-  ): boolean {
-    const lockType = maxscaleNode.settings.cooperativeMonitoringLocks;
-
-    if (!lockType || lockType === 'none') {
-      // No locking - all MaxScale instances can route
-      return true;
-    }
-
-    if (lockType === 'majority_of_all') {
-      // Need majority of ALL MaxScale instances (including down ones)
-      const requiredCount = Math.floor(totalCount / 2) + 1;
-      return runningCount >= requiredCount;
-    }
-
-    if (lockType === 'majority_of_running') {
-      // Need majority of RUNNING MaxScale instances
-      // If we're running, we're part of the majority by definition
-      // This is a simplified model - in reality it's more complex
-      return true;
-    }
-
-    return false;
   }
 
   /**
