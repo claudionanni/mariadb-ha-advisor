@@ -51,6 +51,7 @@ export class GaleraQuorumEngine {
       nodeStates,
       primaryComponent: primaryPartition?.nodeIds || [],
       splitBrain: this.detectSplitBrain(partitions, totalWeight),
+      hasQuorum: primaryPartition !== null && primaryPartition !== undefined,
     };
   }
 

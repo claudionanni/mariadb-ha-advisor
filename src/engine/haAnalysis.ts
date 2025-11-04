@@ -152,10 +152,21 @@ export class HAAnalysisEngine {
 
     // MaxScale recommendations
     const downMaxScales = maxscaleStates.filter(ms => ms.state === 'down');
-    if (downMaxScales.length > 0 && availability.canAcceptWrites) {
-      recommendations.push(
-        `${downMaxScales.length} MaxScale instance(s) down but system still operational.`
-      );
+    const routingMaxScales = maxscaleStates.filter(ms => ms.canRoute);
+    const activeMaxScale = maxscaleStates.find(ms => ms.hasLock && ms.canRoute);
+    
+    if (downMaxScales.length > 0 && routingMaxScales.length > 0) {
+      if (activeMaxScale) {
+        recommendations.push(
+          `${downMaxScales.length} MaxScale instance(s) down but another instance (${
+            this.topology.maxscaleNodes.find(n => n.id === activeMaxScale.nodeId)?.name || 'unknown'
+          }) automatically took over with lock. System fully operational.`
+        );
+      } else {
+        recommendations.push(
+          `${downMaxScales.length} MaxScale instance(s) down. Routing available but no lock holder.`
+        );
+      }
     }
 
     if (!availability.canAcceptWrites && galeraState.primaryComponent.length > 0) {
@@ -165,12 +176,18 @@ export class HAAnalysisEngine {
     }
 
     const noLockMaxScales = maxscaleStates.filter(
-      ms => ms.state !== 'down' && !ms.hasLock
+      ms => ms.state !== 'down' && !ms.hasLock && ms.visibleGaleraNodes.length > 0
     );
     if (noLockMaxScales.length > 0) {
-      recommendations.push(
-        `${noLockMaxScales.length} MaxScale instance(s) cannot obtain cooperative monitoring lock. Review cooperativeMonitoringLocks setting.`
-      );
+      const firstNode = this.topology.maxscaleNodes.find(n => n.id === noLockMaxScales[0].nodeId);
+      const lockType = firstNode?.settings.cooperativeMonitoringLocks;
+      if (lockType === 'majority_of_all') {
+        const requiredLocks = Math.floor(this.topology.galeraNodes.length / 2) + 1;
+        const runningGalera = galeraState.nodeStates.filter(n => n.state !== 'down').length;
+        recommendations.push(
+          `${noLockMaxScales.length} MaxScale instance(s) cannot obtain cooperative monitoring locks. With majority_of_all, need to acquire locks on ${requiredLocks} out of ${this.topology.galeraNodes.length} Galera backends (currently ${runningGalera} running).`
+        );
+      }
     }
 
     if (recommendations.length === 0) {

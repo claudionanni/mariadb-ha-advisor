@@ -1,6 +1,6 @@
-# HA Advisor
+# MariaDB HA Advisor
 
-**High Availability Configuration Analysis Tool for Galera & MaxScale**
+**High Availability Configuration Analysis Tool for MariaDB Galera Cluster & MaxScale**
 
 An interactive tool to design, configure, and analyze HA settings for MariaDB Galera Cluster and MaxScale deployments.
 

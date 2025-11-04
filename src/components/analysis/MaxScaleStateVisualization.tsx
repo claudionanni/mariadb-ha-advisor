@@ -2,15 +2,28 @@ import type { MaxScaleNodeState } from '../../types';
 import { useTopologyStore } from '../../store/topologyStore';
 
 interface MaxScaleStateVisualizationProps {
-  states: MaxScaleNodeState[];
+  states?: MaxScaleNodeState[];
 }
 
 export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizationProps) {
   const maxscaleNodes = useTopologyStore((state) => state.topology.maxscaleNodes);
   const galeraNodes = useTopologyStore((state) => state.topology.galeraNodes);
   
+  if (!states) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+          <span className="text-purple-600">🔶</span>
+          MaxScale Routing State
+        </h4>
+        <p className="text-sm text-gray-500">No analysis data available</p>
+      </div>
+    );
+  }
+  
   const routingCount = states.filter(s => s.canRoute).length;
   const downCount = states.filter(s => s.state === 'down').length;
+  const activeInstance = states.find(s => s.hasLock && s.state !== 'down');
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -21,7 +34,7 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
 
       {/* Summary Stats */}
       <div className="mb-4 p-3 bg-purple-50 rounded-lg border border-purple-200">
-        <div className="grid grid-cols-3 gap-4 text-sm">
+        <div className="grid grid-cols-4 gap-4 text-sm">
           <div>
             <div className="text-xs text-purple-600 font-medium">Total Instances</div>
             <div className="text-lg font-bold text-purple-900">{states.length}</div>
@@ -34,8 +47,25 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
             <div className="text-xs text-purple-600 font-medium">Down</div>
             <div className="text-lg font-bold text-purple-900">{downCount}</div>
           </div>
+          <div>
+            <div className="text-xs text-purple-600 font-medium">Active Lock</div>
+            <div className="text-lg">{activeInstance ? '🔒' : '❌'}</div>
+          </div>
         </div>
       </div>
+
+      {/* Cooperative Monitoring Info */}
+      {maxscaleNodes.length > 0 && maxscaleNodes[0].settings.cooperativeMonitoringLocks && (
+        <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <div className="text-xs text-blue-900 font-medium mb-1">
+            ℹ️ Cooperative Monitoring Enabled
+          </div>
+          <div className="text-xs text-blue-700">
+            Lock mode: <strong>{maxscaleNodes[0].settings.cooperativeMonitoringLocks?.replace('_', ' ')}</strong>
+            {' • '}Only one MaxScale actively manages the Galera cluster at a time to prevent conflicts.
+          </div>
+        </div>
+      )}
 
       {/* MaxScale Nodes */}
       <div>
@@ -57,14 +87,21 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
             return (
               <div
                 key={nodeState.nodeId}
-                className={`p-3 rounded border ${statusColor}`}
+                className={`p-3 rounded border-2 ${statusColor} ${
+                  nodeState.hasLock && nodeState.state !== 'down' ? 'ring-2 ring-purple-500' : ''
+                }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xl">{statusIcon}</span>
                     <div>
-                      <div className="font-medium text-sm text-gray-900">
+                      <div className="font-medium text-sm text-gray-900 flex items-center gap-2">
                         {node?.name || nodeState.nodeId}
+                        {nodeState.hasLock && nodeState.state !== 'down' && (
+                          <span className="px-1.5 py-0.5 text-xs bg-purple-600 text-white rounded font-bold">
+                            ACTIVE
+                          </span>
+                        )}
                       </div>
                       <div className="text-xs text-gray-600 mt-0.5">
                         {nodeState.state === 'down' ? 'DOWN' :
@@ -75,13 +112,8 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
 
                   <div className="flex items-center gap-2">
                     {nodeState.hasLock && nodeState.state !== 'down' && (
-                      <span className="px-2 py-1 text-xs bg-purple-200 text-purple-800 rounded">
+                      <span className="px-2 py-1 text-xs bg-purple-200 text-purple-900 rounded font-medium">
                         🔒 Has Lock
-                      </span>
-                    )}
-                    {!nodeState.hasLock && nodeState.state !== 'down' && (
-                      <span className="px-2 py-1 text-xs bg-gray-200 text-gray-700 rounded">
-                        No Lock
                       </span>
                     )}
                   </div>

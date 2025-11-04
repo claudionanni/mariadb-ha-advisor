@@ -78,7 +78,11 @@ export interface MaxScaleSettings {
   monitorInterval: number; // Milliseconds
   monitorTimeoutMs?: number;
   
-  // Cooperative monitoring
+  // Cooperative monitoring - determines how MaxScale acquires locks on Galera backends
+  // Only ONE MaxScale holds locks at any time (via SELECT GET_LOCK())
+  // - majority_of_all: Must acquire locks on majority of ALL configured Galera nodes
+  // - majority_of_running: Must acquire locks on majority of RUNNING Galera nodes
+  // - undefined: No cooperative monitoring, all MaxScale instances monitor independently
   cooperativeMonitoringLocks?: 'majority_of_all' | 'majority_of_running';
   
   // Backend server priorities
@@ -105,30 +109,21 @@ export interface Topology {
 // Failure Scenarios
 // ============================================================================
 
-export type FailureType = 
+export type NodeFailureType = 
   | 'node_down'           // Complete node failure
   | 'node_unresponsive'   // Node running but not responding
-  | 'node_unreachable';   // Network partition
+  | 'network_partition';  // Network partition
 
 export interface NodeFailure {
-  nodeId: string;
-  nodeType: 'galera' | 'maxscale' | 'server';
-  failureType: FailureType;
+  targetId: string;
+  type: NodeFailureType;
 }
-
-export interface NetworkPartition {
-  // List of nodes that can reach each other
-  partitionGroups: string[][]; // Each group can reach each other but not other groups
-}
-
-export type FailureScenarioMode = 'manual' | 'auto' | 'preset';
 
 export interface FailureScenario {
   id: string;
   name: string;
-  mode: FailureScenarioMode;
-  nodeFailures: NodeFailure[];
-  networkPartitions?: NetworkPartition;
+  description: string;
+  failures: NodeFailure[];
 }
 
 // ============================================================================
@@ -136,12 +131,39 @@ export interface FailureScenario {
 // ============================================================================
 
 export type ClusterState = 'operational' | 'degraded' | 'failed';
+export type GaleraNodeState = 'primary' | 'non_primary' | 'down';
+
+export interface GaleraNodeStateInfo {
+  nodeId: string;
+  state: GaleraNodeState;
+  canAcceptReads: boolean;
+  canAcceptWrites: boolean;
+  partitionId?: number;
+}
+
+export interface GaleraPartition {
+  id: number;
+  nodeIds: string[];
+  weight: number;
+  hasQuorum: boolean;
+}
 
 export interface GaleraClusterState {
-  state: ClusterState;
+  totalWeight: number;
+  quorumWeight: number;
   primaryComponent: string[]; // Node IDs in primary component
-  nonPrimaryComponents: string[][]; // Other partitions
+  nodeStates: GaleraNodeStateInfo[];
+  partitions: GaleraPartition[];
+  splitBrain: boolean;
   hasQuorum: boolean;
+}
+
+export interface MaxScaleNodeState {
+  nodeId: string;
+  state: 'up' | 'down';
+  canRoute: boolean;
+  visibleGaleraNodes: string[];
+  hasLock: boolean;
 }
 
 export interface MaxScaleRoutingState {
@@ -152,12 +174,21 @@ export interface MaxScaleRoutingState {
   isReadOnly: boolean; // Set read-only due to lost majority
 }
 
+export interface SystemAvailability {
+  canAcceptWrites: boolean;
+  canAcceptReads: boolean;
+  operationalMaxScales: number;
+  operationalGaleraNodes: number;
+}
+
 export interface AnalysisResult {
   scenarioId: string;
-  clusterState: ClusterState;
+  timestamp: string;
   galeraState: GaleraClusterState;
-  maxscaleStates: MaxScaleRoutingState[];
-  toleranceSummary: ToleranceSummary;
+  maxscaleStates: MaxScaleNodeState[];
+  systemAvailability: SystemAvailability;
+  summary: string;
+  recommendations: string[];
 }
 
 export interface ToleranceSummary {

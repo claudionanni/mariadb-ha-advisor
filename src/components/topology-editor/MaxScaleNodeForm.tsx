@@ -11,7 +11,7 @@ interface MaxScaleNodeFormProps {
 const DEFAULT_SETTINGS: MaxScaleSettings = {
   monitorInterval: 2000, // 2 seconds
   monitorTimeoutMs: 3000,
-  cooperativeMonitoringLocks: 'majority_of_all',
+  cooperativeMonitoringLocks: 'majority_of_running',
   autoFailover: true,
   failoverTimeout: 90,
 };

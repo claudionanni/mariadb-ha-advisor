@@ -2,11 +2,23 @@ import type { GaleraClusterState } from '../../types';
 import { useTopologyStore } from '../../store/topologyStore';
 
 interface GaleraStateVisualizationProps {
-  state: GaleraClusterState;
+  state?: GaleraClusterState;
 }
 
 export function GaleraStateVisualization({ state }: GaleraStateVisualizationProps) {
   const galeraNodes = useTopologyStore((state) => state.topology.galeraNodes);
+  
+  if (!state) {
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+          <span className="text-emerald-600">🔷</span>
+          Galera Cluster State
+        </h4>
+        <p className="text-sm text-gray-500">No analysis data available</p>
+      </div>
+    );
+  }
   
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4">

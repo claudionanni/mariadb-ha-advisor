@@ -1,5 +1,5 @@
 interface RecommendationsPanelProps {
-  recommendations: string[];
+  recommendations?: string[];
 }
 
 export function RecommendationsPanel({ recommendations }: RecommendationsPanelProps) {
@@ -39,7 +39,7 @@ export function RecommendationsPanel({ recommendations }: RecommendationsPanelPr
       </h4>
 
       <div className="space-y-2">
-        {recommendations.map((rec, index) => {
+        {recommendations?.map((rec, index) => {
           const severity = getSeverity(rec);
           const icon = getIcon(severity);
           const colorClasses = getColorClasses(severity);
@@ -58,7 +58,7 @@ export function RecommendationsPanel({ recommendations }: RecommendationsPanelPr
         })}
       </div>
 
-      {recommendations.length === 0 && (
+      {(!recommendations || recommendations.length === 0) && (
         <div className="text-center py-8 text-gray-500">
           <p className="text-sm">No recommendations at this time</p>
         </div>

@@ -4,7 +4,6 @@ import type {
   GaleraNode,
   FailureScenario,
   MaxScaleNodeState,
-  CooperativeMonitoringLocks,
   GaleraClusterState
 } from '../types';
 
@@ -34,7 +33,7 @@ export class MaxScaleRoutingEngine {
     );
 
     // Determine which MaxScale (if any) holds the cooperative lock
-    const lockHolder = this.determineLockHolder(runningMaxScale, totalMaxScale);
+    const lockHolder = this.determineLockHolder(runningMaxScale, totalMaxScale, galeraState, scenario);
 
     for (const maxscaleNode of this.topology.maxscaleNodes) {
       const isDown = this.isNodeDown(maxscaleNode.id, scenario);
@@ -61,14 +60,14 @@ export class MaxScaleRoutingEngine {
       const hasLock = lockHolder === maxscaleNode.id;
 
       // Determine if MaxScale can route
-      // With no locking (none), all can route if they see Galera nodes
+      // Without locking: all MaxScales can route if they see Galera nodes
+      // With locking: only the lock holder can actively manage the cluster and route
       const lockType = maxscaleNode.settings.cooperativeMonitoringLocks;
-      const canRoute = (!lockType || lockType === 'none' || hasLock) && 
-                       visibleGaleraNodes.length > 0;
+      const canRoute = (!lockType || hasLock) && visibleGaleraNodes.length > 0;
 
       maxscaleStates.push({
         nodeId: maxscaleNode.id,
-        state: canRoute ? 'routing' : 'monitoring-only',
+        state: 'up',
         canRoute,
         visibleGaleraNodes,
         hasLock,
@@ -81,39 +80,109 @@ export class MaxScaleRoutingEngine {
   /**
    * Determine which MaxScale (if any) holds the cooperative monitoring lock
    * Returns the nodeId of the lock holder, or null if no lock mechanism or no holder
+   * 
+   * Note: Only ONE MaxScale holds locks at a time via SELECT GET_LOCK() on Galera backends.
+   * When the active MaxScale goes down, another running MaxScale automatically acquires 
+   * the locks and becomes active.
+   * 
+   * Lock behavior:
+   * - majority_of_all: MaxScale needs to acquire locks on majority of ALL configured Galera nodes
+   * - majority_of_running: MaxScale needs to acquire locks on majority of RUNNING Galera nodes  
+   * - No setting: All MaxScales can route independently (no cooperative monitoring)
    */
   private determineLockHolder(
     runningMaxScale: MaxScaleNode[],
-    totalMaxScale: number
+    totalMaxScale: number,
+    galeraState: GaleraClusterState,
+    scenario: FailureScenario
   ): string | null {
     if (runningMaxScale.length === 0) return null;
 
     // Get the lock type from the first node (all should have same setting)
     const lockType = runningMaxScale[0].settings.cooperativeMonitoringLocks;
 
-    if (!lockType || lockType === 'none') {
-      // No locking - all can independently monitor/route
+    if (!lockType) {
+      // No locking configured - all instances can route independently
+      // This is effectively no cooperative monitoring
       return null;
     }
 
+    const totalGaleraNodes = this.topology.galeraNodes.length;
+    const runningGaleraNodes = galeraState.nodeStates.filter(n => n.state !== 'down').length;
+
     if (lockType === 'majority_of_all') {
-      // Need majority of ALL instances (including down ones)
-      const requiredCount = Math.floor(totalMaxScale / 2) + 1;
-      if (runningMaxScale.length < requiredCount) {
-        // No majority - no lock holder
+      // Need to acquire locks on majority of ALL configured Galera nodes
+      const requiredLocks = Math.floor(totalGaleraNodes / 2) + 1;
+      
+      // Check if we have enough running Galera nodes to even acquire majority
+      if (runningGaleraNodes < requiredLocks) {
+        // Cannot acquire majority of all - no MaxScale can become active
         return null;
       }
-      // First running instance gets the lock (deterministic for simulation)
-      return runningMaxScale[0].id;
+      
+      // Find the first MaxScale that can see at least requiredLocks Galera nodes
+      // This MaxScale can acquire the locks and becomes active
+      for (const maxscale of runningMaxScale) {
+        const visibleCount = this.countVisibleGaleraNodes(maxscale, scenario, galeraState);
+        if (visibleCount >= requiredLocks) {
+          return maxscale.id;
+        }
+      }
+      
+      // No MaxScale can see enough nodes to acquire majority
+      return null;
     }
 
     if (lockType === 'majority_of_running') {
-      // Always have majority of running instances (by definition)
-      // First running instance gets the lock
-      return runningMaxScale[0].id;
+      // Need to acquire locks on majority of RUNNING Galera nodes
+      // As long as we have any running Galera nodes, we can acquire majority
+      if (runningGaleraNodes === 0) {
+        return null;
+      }
+      
+      const requiredLocks = Math.floor(runningGaleraNodes / 2) + 1;
+      
+      // Find the first MaxScale that can see at least requiredLocks running Galera nodes
+      for (const maxscale of runningMaxScale) {
+        const visibleCount = this.countVisibleGaleraNodes(maxscale, scenario, galeraState);
+        if (visibleCount >= requiredLocks) {
+          return maxscale.id;
+        }
+      }
+      
+      // No MaxScale can see enough running nodes to acquire majority
+      return null;
     }
 
     return null;
+  }
+
+  /**
+   * Count how many Galera nodes this MaxScale can see
+   */
+  private countVisibleGaleraNodes(
+    maxscaleNode: MaxScaleNode,
+    scenario: FailureScenario,
+    galeraState: GaleraClusterState
+  ): number {
+    let count = 0;
+    
+    for (const galeraNode of this.topology.galeraNodes) {
+      // Skip if Galera node is down
+      const galeraNodeState = galeraState.nodeStates.find(
+        s => s.nodeId === galeraNode.id
+      );
+      if (!galeraNodeState || galeraNodeState.state === 'down') {
+        continue;
+      }
+
+      // Check if MaxScale can communicate with this Galera node
+      if (this.canCommunicate(maxscaleNode, galeraNode, scenario)) {
+        count++;
+      }
+    }
+    
+    return count;
   }
 
   /**
