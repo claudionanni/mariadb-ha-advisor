@@ -1,4 +1,5 @@
 import { useTopologyStore } from '../../store/topologyStore';
+import { QuorumTester } from './QuorumTester';
 
 export function AnalysisView() {
   const topology = useTopologyStore((state) => state.topology);
@@ -16,6 +17,9 @@ export function AnalysisView() {
         </div>
       ) : (
         <div className="space-y-6">
+          {/* Quorum Engine Tester */}
+          <QuorumTester />
+          
           <div>
             <h3 className="text-lg font-medium mb-3">Analysis Modes</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -59,7 +63,7 @@ export function AnalysisView() {
                   >
                     <div className="font-medium">{scenario.name}</div>
                     <div className="text-sm text-gray-600">
-                      {scenario.nodeFailures.length} node failure(s)
+                      {scenario.failures.length} failure(s)
                     </div>
                   </div>
                 ))}
