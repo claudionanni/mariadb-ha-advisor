@@ -13,7 +13,7 @@ export function Layout({ children }: LayoutProps) {
             HA Advisor
           </h1>
           <p className="text-sm text-gray-600 mt-1">
-            High Availability Configuration Analysis for Galera & MaxScale
+            High Availability Configuration Analysis for MariaDB Clusters & MaxScale
           </p>
         </div>
       </header>
