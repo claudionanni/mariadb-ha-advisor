@@ -21,11 +21,27 @@ export class GaleraQuorumEngine {
    * Calculate cluster state for a given failure scenario
    */
   calculateClusterState(scenario: FailureScenario): GaleraClusterState {
+    // Get Galera nodes (from either galeraNodes or databaseNodes)
+    const galeraNodes = this.getGaleraNodes();
+    
+    // If no Galera nodes, return empty state
+    if (galeraNodes.length === 0) {
+      return {
+        totalWeight: 0,
+        quorumWeight: 0,
+        partitions: [],
+        nodeStates: [],
+        primaryComponent: [],
+        splitBrain: false,
+        hasQuorum: false,
+      };
+    }
+    
     const totalWeight = this.calculateTotalWeight();
     const partitions = this.identifyPartitions(scenario);
     const primaryPartition = this.selectPrimaryPartition(partitions, totalWeight);
     
-    const nodeStates = this.topology.galeraNodes.map(node => {
+    const nodeStates = galeraNodes.map(node => {
       const partition = partitions.find(p => p.nodeIds.includes(node.id));
       const isPrimary = partition === primaryPartition;
       const isDown = this.isNodeDown(node.id, scenario);
@@ -56,11 +72,36 @@ export class GaleraQuorumEngine {
   }
 
   /**
+   * Get Galera nodes from topology (supports both formats)
+   */
+  private getGaleraNodes(): GaleraNode[] {
+    // Try old format first
+    if (this.topology.galeraNodes && this.topology.galeraNodes.length > 0) {
+      return this.topology.galeraNodes;
+    }
+    
+    // Try new format - filter database nodes for Galera type
+    if (this.topology.databaseNodes) {
+      return this.topology.databaseNodes
+        .filter(node => node.nodeType === 'galera')
+        .map(node => ({
+          id: node.id,
+          name: node.name,
+          serverId: node.serverId,
+          settings: node.settings as any, // Settings should have pcWeight
+        })) as GaleraNode[];
+    }
+    
+    return [];
+  }
+
+  /**
    * Calculate total cluster weight
    */
   private calculateTotalWeight(): number {
-    return this.topology.galeraNodes.reduce(
-      (sum, node) => sum + node.settings.pcWeight, 
+    const galeraNodes = this.getGaleraNodes();
+    return galeraNodes.reduce(
+      (sum, node) => sum + ((node.settings as any).pcWeight || 1), 
       0
     );
   }
@@ -77,7 +118,8 @@ export class GaleraQuorumEngine {
    * Identify network partitions based on failure scenario
    */
   private identifyPartitions(scenario: FailureScenario): Partition[] {
-    const aliveNodes = this.topology.galeraNodes.filter(
+    const galeraNodes = this.getGaleraNodes();
+    const aliveNodes = galeraNodes.filter(
       node => !this.isNodeDown(node.id, scenario)
     );
 
@@ -106,8 +148,8 @@ export class GaleraQuorumEngine {
       if (partition.length > 0) {
         const weight = partition.reduce(
           (sum, nodeId) => {
-            const node = this.topology.galeraNodes.find(n => n.id === nodeId);
-            return sum + (node?.settings.pcWeight || 0);
+            const node = galeraNodes.find(n => n.id === nodeId);
+            return sum + ((node?.settings as any)?.pcWeight || 1);
           },
           0
         );
@@ -128,15 +170,16 @@ export class GaleraQuorumEngine {
    */
   private buildConnectivityGraph(scenario: FailureScenario): Map<string, Set<string>> {
     const graph = new Map<string, Set<string>>();
+    const galeraNodes = this.getGaleraNodes();
 
     // Initialize graph
-    for (const node of this.topology.galeraNodes) {
+    for (const node of galeraNodes) {
       graph.set(node.id, new Set());
     }
 
     // Check connectivity between every pair of nodes
-    for (const node1 of this.topology.galeraNodes) {
-      for (const node2 of this.topology.galeraNodes) {
+    for (const node1 of galeraNodes) {
+      for (const node2 of galeraNodes) {
         if (node1.id === node2.id) continue;
 
         if (this.canCommunicate(node1, node2, scenario)) {

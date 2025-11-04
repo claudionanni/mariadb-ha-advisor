@@ -49,9 +49,15 @@ export function importTopologyFromFile(): Promise<Topology> {
           if (!topology.servers || !Array.isArray(topology.servers)) {
             throw new Error('Invalid topology format: missing servers array');
           }
-          if (!topology.galeraNodes || !Array.isArray(topology.galeraNodes)) {
-            throw new Error('Invalid topology format: missing galeraNodes array');
+          
+          // Support both old (galeraNodes) and new (databaseNodes) formats
+          const hasOldFormat = topology.galeraNodes && Array.isArray(topology.galeraNodes);
+          const hasNewFormat = topology.databaseNodes && Array.isArray(topology.databaseNodes);
+          
+          if (!hasOldFormat && !hasNewFormat) {
+            throw new Error('Invalid topology format: missing database nodes (galeraNodes or databaseNodes array)');
           }
+          
           if (!topology.maxscaleNodes || !Array.isArray(topology.maxscaleNodes)) {
             throw new Error('Invalid topology format: missing maxscaleNodes array');
           }
