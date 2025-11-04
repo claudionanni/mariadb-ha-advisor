@@ -56,7 +56,7 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
       </div>
 
       {/* Cooperative Monitoring Info - only for Async Replica */}
-      {clusterType === 'async-replica' && maxscaleNodes.length > 0 && maxscaleNodes[0].settings.cooperativeMonitoringLocks && (
+      {clusterType === 'async_replica' && maxscaleNodes.length > 0 && maxscaleNodes[0].settings.cooperativeMonitoringLocks && (
         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div className="text-xs text-blue-900 font-medium mb-1">
             ℹ️ Cooperative Monitoring Enabled
@@ -149,7 +149,7 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
                 )}
 
                 {/* Cooperative Monitoring Info - only for Async Replica */}
-                {clusterType === 'async-replica' && node && nodeState.state !== 'down' && (
+                {clusterType === 'async_replica' && node && nodeState.state !== 'down' && (
                   <div className="mt-2 text-xs text-gray-500">
                     Lock mode: {node.settings.cooperativeMonitoringLocks?.replace('_', ' ') || 'none'}
                   </div>

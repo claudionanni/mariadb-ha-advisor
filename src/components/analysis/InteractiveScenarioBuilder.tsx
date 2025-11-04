@@ -429,8 +429,10 @@ export function InteractiveScenarioBuilder() {
           <AnalysisResultCard result={analysisResult} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <GaleraStateVisualization state={analysisResult.galeraState} />
-            <MaxScaleStateVisualization states={analysisResult.maxscaleStates} />
+            {isGalera && <GaleraStateVisualization state={analysisResult.galeraState} />}
+            {topology.maxscaleNodes.length > 0 && (
+              <MaxScaleStateVisualization states={analysisResult.maxscaleStates} />
+            )}
           </div>
 
           <RecommendationsPanel recommendations={analysisResult.recommendations} />
