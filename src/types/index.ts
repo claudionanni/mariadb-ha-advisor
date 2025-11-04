@@ -196,6 +196,20 @@ export interface GaleraClusterState {
   hasQuorum: boolean;
 }
 
+export interface AsyncReplicaNodeState {
+  nodeId: string;
+  role: 'primary' | 'replica';
+  state: 'up' | 'down';
+  canAcceptReads: boolean;
+  canAcceptWrites: boolean;
+}
+
+export interface AsyncReplicaClusterState {
+  primaryNode: string | null;
+  nodeStates: AsyncReplicaNodeState[];
+  hasActivePrimary: boolean;
+}
+
 export interface MaxScaleNodeState {
   nodeId: string;
   state: 'up' | 'down';
@@ -222,7 +236,8 @@ export interface SystemAvailability {
 export interface AnalysisResult {
   scenarioId: string;
   timestamp: string;
-  galeraState: GaleraClusterState;
+  galeraState?: GaleraClusterState;
+  asyncReplicaState?: AsyncReplicaClusterState;
   maxscaleStates: MaxScaleNodeState[];
   systemAvailability: SystemAvailability;
   summary: string;

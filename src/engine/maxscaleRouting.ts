@@ -2,10 +2,12 @@ import type {
   Topology, 
   MaxScaleNode,
   GaleraNode,
+  DatabaseNode,
   FailureScenario,
   MaxScaleNodeState,
   GaleraClusterState
 } from '../types';
+import type { AsyncReplicaClusterState } from './asyncReplicaEngine';
 
 /**
  * Calculate MaxScale routing state and determine which instances can route queries
@@ -15,6 +17,68 @@ export class MaxScaleRoutingEngine {
   
   constructor(topology: Topology) {
     this.topology = topology;
+  }
+
+  /**
+   * Calculate MaxScale cluster state for async replica topology
+   */
+  calculateMaxScaleStateForAsyncReplica(
+    scenario: FailureScenario,
+    asyncState: AsyncReplicaClusterState
+  ): MaxScaleNodeState[] {
+    const maxscaleStates: MaxScaleNodeState[] = [];
+
+    // Determine which MaxScale instances can participate in routing
+    const runningMaxScale = this.topology.maxscaleNodes.filter(
+      node => !this.isNodeDown(node.id, scenario)
+    );
+
+    // Determine which MaxScale (if any) holds the cooperative lock
+    const lockHolder = this.determineLockHolderForAsyncReplica(
+      runningMaxScale,
+      asyncState,
+      scenario
+    );
+
+    for (const maxscaleNode of this.topology.maxscaleNodes) {
+      const isDown = this.isNodeDown(maxscaleNode.id, scenario);
+      
+      if (isDown) {
+        maxscaleStates.push({
+          nodeId: maxscaleNode.id,
+          state: 'down',
+          canRoute: false,
+          visibleGaleraNodes: [],
+          hasLock: false,
+        });
+        continue;
+      }
+
+      // Check which database nodes this MaxScale can see
+      const visibleNodes = this.getVisibleDatabaseNodes(
+        maxscaleNode,
+        scenario,
+        asyncState
+      );
+
+      // Check if THIS specific MaxScale has the cooperative monitoring lock
+      const hasLock = lockHolder === maxscaleNode.id;
+
+      // Determine if MaxScale can route
+      // For async replica: cooperative monitoring is essential
+      const lockType = maxscaleNode.settings.cooperativeMonitoringLocks;
+      const canRoute = lockType ? hasLock && visibleNodes.length > 0 : visibleNodes.length > 0;
+
+      maxscaleStates.push({
+        nodeId: maxscaleNode.id,
+        state: 'up',
+        canRoute,
+        visibleGaleraNodes: visibleNodes,
+        hasLock,
+      });
+    }
+
+    return maxscaleStates;
   }
 
   /**
@@ -262,6 +326,145 @@ export class MaxScaleRoutingEngine {
   }
 
   /**
+   * Determine which MaxScale holds the lock for async replica cluster
+   */
+  private determineLockHolderForAsyncReplica(
+    runningMaxScale: MaxScaleNode[],
+    asyncState: AsyncReplicaClusterState,
+    scenario: FailureScenario
+  ): string | null {
+    if (runningMaxScale.length === 0) return null;
+
+    // Get the lock type from the first node (all should have same setting)
+    const lockType = runningMaxScale[0].settings.cooperativeMonitoringLocks;
+
+    if (!lockType) {
+      // No locking configured - MaxScale can route but won't perform failover
+      return null;
+    }
+
+    const databaseNodes = this.topology.databaseNodes || [];
+    const totalNodes = databaseNodes.length;
+    const runningNodes = asyncState.nodeStates.filter(n => n.state !== 'down').length;
+
+    if (lockType === 'majority_of_all') {
+      const requiredLocks = Math.floor(totalNodes / 2) + 1;
+      
+      if (runningNodes < requiredLocks) {
+        return null;
+      }
+      
+      for (const maxscale of runningMaxScale) {
+        const visibleCount = this.countVisibleDatabaseNodes(maxscale, scenario, asyncState);
+        if (visibleCount >= requiredLocks) {
+          return maxscale.id;
+        }
+      }
+      
+      return null;
+    }
+
+    if (lockType === 'majority_of_running') {
+      if (runningNodes === 0) {
+        return null;
+      }
+      
+      const requiredLocks = Math.floor(runningNodes / 2) + 1;
+      
+      for (const maxscale of runningMaxScale) {
+        const visibleCount = this.countVisibleDatabaseNodes(maxscale, scenario, asyncState);
+        if (visibleCount >= requiredLocks) {
+          return maxscale.id;
+        }
+      }
+      
+      return null;
+    }
+
+    return null;
+  }
+
+  /**
+   * Count how many database nodes this MaxScale can see (async replica)
+   */
+  private countVisibleDatabaseNodes(
+    maxscaleNode: MaxScaleNode,
+    scenario: FailureScenario,
+    asyncState: AsyncReplicaClusterState
+  ): number {
+    let count = 0;
+    
+    const databaseNodes = this.topology.databaseNodes || [];
+    
+    for (const dbNode of databaseNodes) {
+      const nodeState = asyncState.nodeStates.find(s => s.nodeId === dbNode.id);
+      if (!nodeState || nodeState.state === 'down') {
+        continue;
+      }
+
+      if (this.canCommunicateDatabaseNode(maxscaleNode, dbNode, scenario)) {
+        count++;
+      }
+    }
+    
+    return count;
+  }
+
+  /**
+   * Get list of database nodes visible to this MaxScale (async replica)
+   */
+  private getVisibleDatabaseNodes(
+    maxscaleNode: MaxScaleNode,
+    scenario: FailureScenario,
+    asyncState: AsyncReplicaClusterState
+  ): string[] {
+    const visibleNodes: string[] = [];
+
+    const databaseNodes = this.topology.databaseNodes || [];
+
+    for (const dbNode of databaseNodes) {
+      const nodeState = asyncState.nodeStates.find(s => s.nodeId === dbNode.id);
+      if (!nodeState || nodeState.state === 'down') {
+        continue;
+      }
+
+      if (this.canCommunicateDatabaseNode(maxscaleNode, dbNode, scenario)) {
+        visibleNodes.push(dbNode.id);
+      }
+    }
+
+    return visibleNodes;
+  }
+
+  /**
+   * Check if MaxScale can communicate with a database node (generic)
+   */
+  private canCommunicateDatabaseNode(
+    maxscaleNode: MaxScaleNode,
+    dbNode: DatabaseNode,
+    scenario: FailureScenario
+  ): boolean {
+    const maxscaleServer = this.topology.servers.find(
+      s => s.id === maxscaleNode.serverId
+    );
+    const dbServer = this.topology.servers.find(
+      s => s.id === dbNode.serverId
+    );
+
+    if (!maxscaleServer || !dbServer) return false;
+
+    if (maxscaleServer.subnetId === dbServer.subnetId) {
+      return true;
+    }
+
+    return this.hasNetworkPath(
+      maxscaleServer.subnetId,
+      dbServer.subnetId,
+      scenario
+    );
+  }
+
+  /**
    * Check if there's a network path between two subnets
    */
   private hasNetworkPath(
@@ -290,7 +493,8 @@ export class MaxScaleRoutingEngine {
    * Calculate overall system availability
    */
   calculateSystemAvailability(
-    galeraState: GaleraClusterState,
+    galeraState: GaleraClusterState | undefined,
+    asyncReplicaState: AsyncReplicaClusterState | undefined,
     maxscaleStates: MaxScaleNodeState[]
   ): {
     canAcceptWrites: boolean;
@@ -303,30 +507,61 @@ export class MaxScaleRoutingEngine {
       .filter(ms => ms.canRoute)
       .map(ms => ms.nodeId);
 
-    // Get primary Galera nodes
-    const primaryGaleraNodes = galeraState.primaryComponent;
-
-    // System can accept writes if:
-    // 1. At least one MaxScale can route, AND
-    // 2. That MaxScale can see at least one primary Galera node
+    let primaryGaleraNodes: string[] = [];
     let canAcceptWrites = false;
-    for (const msState of maxscaleStates) {
-      if (msState.canRoute) {
-        const canSeePrimary = msState.visibleGaleraNodes.some(
-          nodeId => primaryGaleraNodes.includes(nodeId)
-        );
-        if (canSeePrimary) {
-          canAcceptWrites = true;
-          break;
+    let canAcceptReads = false;
+
+    if (galeraState) {
+      // Galera cluster logic
+      primaryGaleraNodes = galeraState.primaryComponent;
+
+      // System can accept writes if:
+      // 1. At least one MaxScale can route, AND
+      // 2. That MaxScale can see at least one primary Galera node
+      for (const msState of maxscaleStates) {
+        if (msState.canRoute) {
+          const canSeePrimary = msState.visibleGaleraNodes.some(
+            nodeId => primaryGaleraNodes.includes(nodeId)
+          );
+          if (canSeePrimary) {
+            canAcceptWrites = true;
+            break;
+          }
         }
       }
-    }
 
-    // System can accept reads if:
-    // At least one MaxScale can route to any Galera node
-    const canAcceptReads = maxscaleStates.some(
-      ms => ms.canRoute && ms.visibleGaleraNodes.length > 0
-    );
+      // System can accept reads if:
+      // At least one MaxScale can route to any Galera node
+      canAcceptReads = maxscaleStates.some(
+        ms => ms.canRoute && ms.visibleGaleraNodes.length > 0
+      );
+    } else if (asyncReplicaState) {
+      // Async replica cluster logic
+      if (asyncReplicaState.primaryNode) {
+        primaryGaleraNodes = [asyncReplicaState.primaryNode];
+      }
+
+      // System can accept writes if:
+      // 1. At least one MaxScale can route, AND
+      // 2. That MaxScale can see the primary node
+      for (const msState of maxscaleStates) {
+        if (msState.canRoute && asyncReplicaState.primaryNode) {
+          const canSeePrimary = msState.visibleGaleraNodes.includes(
+            asyncReplicaState.primaryNode
+          );
+          if (canSeePrimary) {
+            canAcceptWrites = true;
+            break;
+          }
+        }
+      }
+
+      // System can accept reads if:
+      // At least one MaxScale can route to any database node
+      canAcceptReads = maxscaleStates.some(
+        ms => ms.canRoute && ms.visibleGaleraNodes.length > 0
+      );
+    }
 
     return {
       canAcceptWrites,

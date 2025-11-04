@@ -4,6 +4,7 @@ import { HAAnalysisEngine } from '../../engine/haAnalysis';
 import type { FailureScenario, AnalysisResult } from '../../types';
 import { AnalysisResultCard } from './AnalysisResultCard';
 import { GaleraStateVisualization } from './GaleraStateVisualization';
+import { AsyncReplicaStateVisualization } from './AsyncReplicaStateVisualization';
 import { MaxScaleStateVisualization } from './MaxScaleStateVisualization';
 import { RecommendationsPanel } from './RecommendationsPanel';
 import { NetworkStateVisualization } from './NetworkStateVisualization';
@@ -429,7 +430,11 @@ export function InteractiveScenarioBuilder() {
           <AnalysisResultCard result={analysisResult} />
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {isGalera && <GaleraStateVisualization state={analysisResult.galeraState} />}
+            {isGalera ? (
+              <GaleraStateVisualization state={analysisResult.galeraState} />
+            ) : (
+              <AsyncReplicaStateVisualization state={analysisResult.asyncReplicaState} />
+            )}
             {topology.maxscaleNodes.length > 0 && (
               <MaxScaleStateVisualization states={analysisResult.maxscaleStates} />
             )}

@@ -1,4 +1,5 @@
 import type { AnalysisResult } from '../../types';
+import { useTopologyStore } from '../../store/topologyStore';
 
 interface AnalysisResultCardProps {
   result: AnalysisResult;
@@ -6,9 +7,11 @@ interface AnalysisResultCardProps {
 
 export function AnalysisResultCard({ result }: AnalysisResultCardProps) {
   const { systemAvailability, summary } = result;
+  const clusterType = useTopologyStore((state) => state.topology.clusterType);
   
   const isOperational = systemAvailability.canAcceptWrites;
   const canRead = systemAvailability.canAcceptReads;
+  const dbLabel = clusterType === 'galera' ? 'Galera Nodes' : 'DB Nodes';
 
   return (
     <div className="bg-white rounded-lg border-2 border-gray-200 overflow-hidden">
@@ -70,7 +73,7 @@ export function AnalysisResultCard({ result }: AnalysisResultCardProps) {
           <div className="text-2xl font-bold text-emerald-600">
             {systemAvailability.operationalGaleraNodes}
           </div>
-          <div className="text-xs text-gray-600 mt-1">Galera Nodes</div>
+          <div className="text-xs text-gray-600 mt-1">{dbLabel}</div>
         </div>
         
         <div className="text-center">
