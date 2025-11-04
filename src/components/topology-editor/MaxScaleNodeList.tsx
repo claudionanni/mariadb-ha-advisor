@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTopologyStore } from '../../store/topologyStore';
 import type { MaxScaleNode } from '../../types';
+import { MaxScaleNodeSettings } from '../topology/MaxScaleNodeSettings';
 
 interface MaxScaleNodeListProps {
   onEdit: (node: MaxScaleNode) => void;
@@ -82,10 +83,10 @@ export function MaxScaleNodeList({ onEdit }: MaxScaleNodeListProps) {
                     <span className="text-purple-600">
                       Monitor: {node.settings.monitorInterval}ms
                     </span>
-                    <span className="text-xs text-gray-500">
-                      Locks: {node.settings.cooperativeMonitoringLocks?.replace('_', ' ')}
-                    </span>
                   </div>
+                  
+                  {/* Settings Editor */}
+                  <MaxScaleNodeSettings node={node} />
                 </div>
                 
                 <div className="flex gap-2 ml-4">

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useTopologyStore } from '../../store/topologyStore';
 import type { GaleraNode } from '../../types';
+import { GaleraNodeSettings } from '../topology/GaleraNodeSettings';
 
 interface GaleraNodeListProps {
   onEdit: (node: GaleraNode) => void;
@@ -88,10 +89,10 @@ export function GaleraNodeList({ onEdit }: GaleraNodeListProps) {
                       {serverInfo.isVirtual && <span className="ml-1 text-xs text-gray-500">(VM)</span>}
                     </span>
                     <span>Subnet: {serverInfo.subnet}</span>
-                    <span className="font-medium text-blue-600">
-                      Weight: {node.settings.pcWeight}
-                    </span>
                   </div>
+                  
+                  {/* Settings Editor */}
+                  <GaleraNodeSettings node={node} />
                 </div>
                 
                 <div className="flex gap-2 ml-4">
