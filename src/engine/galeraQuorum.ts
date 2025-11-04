@@ -218,13 +218,9 @@ export class GaleraQuorumEngine {
 
     if (!server1 || !server2) return false;
 
-    // Same subnet = always connected (unless network failure)
+    // Same subnet = can communicate (nodes in same subnet always see each other)
     if (server1.subnetId === server2.subnetId) {
-      // Check for subnet network failures
-      const subnetFailure = scenario.failures.find(
-        f => f.targetId === server1.subnetId && f.type === 'network_partition'
-      );
-      return !subnetFailure;
+      return true;
     }
 
     // Different subnets - check if there's a path via subnet links

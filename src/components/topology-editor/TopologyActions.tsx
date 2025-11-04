@@ -11,7 +11,7 @@ export function TopologyActions() {
 
   const handleExport = () => {
     try {
-      const filename = generateFilename('ha-topology');
+      const filename = generateFilename(topology.name);
       exportTopologyToFile(topology, filename);
       setError('');
     } catch (err) {

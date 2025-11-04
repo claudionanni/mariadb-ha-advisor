@@ -182,10 +182,11 @@ export class HAAnalysisEngine {
       const firstNode = this.topology.maxscaleNodes.find(n => n.id === noLockMaxScales[0].nodeId);
       const lockType = firstNode?.settings.cooperativeMonitoringLocks;
       if (lockType === 'majority_of_all') {
-        const requiredLocks = Math.floor(this.topology.galeraNodes.length / 2) + 1;
+        const databaseNodes = this.topology.databaseNodes || this.topology.galeraNodes || [];
+        const requiredLocks = Math.floor(databaseNodes.length / 2) + 1;
         const runningGalera = galeraState.nodeStates.filter(n => n.state !== 'down').length;
         recommendations.push(
-          `${noLockMaxScales.length} MaxScale instance(s) cannot obtain cooperative monitoring locks. With majority_of_all, need to acquire locks on ${requiredLocks} out of ${this.topology.galeraNodes.length} Galera backends (currently ${runningGalera} running).`
+          `${noLockMaxScales.length} MaxScale instance(s) cannot obtain cooperative monitoring locks. With majority_of_all, need to acquire locks on ${requiredLocks} out of ${databaseNodes.length} Galera backends (currently ${runningGalera} running).`
         );
       }
     }

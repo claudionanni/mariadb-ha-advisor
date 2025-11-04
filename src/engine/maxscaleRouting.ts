@@ -107,7 +107,9 @@ export class MaxScaleRoutingEngine {
       return null;
     }
 
-    const totalGaleraNodes = this.topology.galeraNodes.length;
+    // Get database nodes (either from databaseNodes or legacy galeraNodes)
+    const databaseNodes = this.topology.databaseNodes || this.topology.galeraNodes || [];
+    const totalGaleraNodes = databaseNodes.length;
     const runningGaleraNodes = galeraState.nodeStates.filter(n => n.state !== 'down').length;
 
     if (lockType === 'majority_of_all') {
@@ -167,17 +169,20 @@ export class MaxScaleRoutingEngine {
   ): number {
     let count = 0;
     
-    for (const galeraNode of this.topology.galeraNodes) {
-      // Skip if Galera node is down
+    // Get database nodes (either from databaseNodes or legacy galeraNodes)
+    const databaseNodes = this.topology.databaseNodes || this.topology.galeraNodes || [];
+    
+    for (const dbNode of databaseNodes) {
+      // Skip if database node is down
       const galeraNodeState = galeraState.nodeStates.find(
-        s => s.nodeId === galeraNode.id
+        s => s.nodeId === dbNode.id
       );
       if (!galeraNodeState || galeraNodeState.state === 'down') {
         continue;
       }
 
-      // Check if MaxScale can communicate with this Galera node
-      if (this.canCommunicate(maxscaleNode, galeraNode, scenario)) {
+      // Check if MaxScale can communicate with this database node
+      if (this.canCommunicate(maxscaleNode, dbNode, scenario)) {
         count++;
       }
     }
@@ -203,18 +208,21 @@ export class MaxScaleRoutingEngine {
   ): string[] {
     const visibleNodes: string[] = [];
 
-    for (const galeraNode of this.topology.galeraNodes) {
-      // Skip if Galera node is down
+    // Get database nodes (either from databaseNodes or legacy galeraNodes)
+    const databaseNodes = this.topology.databaseNodes || this.topology.galeraNodes || [];
+
+    for (const dbNode of databaseNodes) {
+      // Skip if database node is down
       const galeraNodeState = galeraState.nodeStates.find(
-        s => s.nodeId === galeraNode.id
+        s => s.nodeId === dbNode.id
       );
       if (!galeraNodeState || galeraNodeState.state === 'down') {
         continue;
       }
 
-      // Check if MaxScale can communicate with this Galera node
-      if (this.canCommunicate(maxscaleNode, galeraNode, scenario)) {
-        visibleNodes.push(galeraNode.id);
+      // Check if MaxScale can communicate with this database node
+      if (this.canCommunicate(maxscaleNode, dbNode, scenario)) {
+        visibleNodes.push(dbNode.id);
       }
     }
 
@@ -239,13 +247,10 @@ export class MaxScaleRoutingEngine {
 
     if (!maxscaleServer || !galeraServer) return false;
 
-    // Same subnet = always connected (unless network failure)
+    // Same subnet = can communicate unless there's a partition within the subnet
+    // (which would mean the entire subnet is down or partitioned)
     if (maxscaleServer.subnetId === galeraServer.subnetId) {
-      // Check for subnet network failures
-      const subnetFailure = scenario.failures.find(
-        f => f.targetId === maxscaleServer.subnetId && f.type === 'network_partition'
-      );
-      return !subnetFailure;
+      return true; // Nodes in same subnet can always communicate
     }
 
     // Different subnets - check if there's a path via subnet links

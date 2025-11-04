@@ -82,7 +82,7 @@ export function importTopologyFromFile(): Promise<Topology> {
 /**
  * Generate filename with timestamp
  */
-export function generateFilename(prefix = 'topology'): string {
+export function generateFilename(topologyName?: string): string {
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -90,5 +90,10 @@ export function generateFilename(prefix = 'topology'): string {
   const hours = String(now.getHours()).padStart(2, '0');
   const minutes = String(now.getMinutes()).padStart(2, '0');
   
-  return `${prefix}-${year}${month}${day}-${hours}${minutes}.json`;
+  // Sanitize topology name for filename (remove special chars, replace spaces with hyphens)
+  const safeName = topologyName 
+    ? topologyName.replace(/[^a-zA-Z0-9-_]/g, '-').replace(/--+/g, '-').toLowerCase()
+    : 'topology';
+  
+  return `${safeName}-${year}${month}${day}-${hours}${minutes}.json`;
 }
