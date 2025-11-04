@@ -113,4 +113,4 @@ This is a specialized tool for database HA planning. Contributions welcome!
 
 ## License
 
-MIT
+GPL-3.0 - See [LICENSE](LICENSE) file for details.
