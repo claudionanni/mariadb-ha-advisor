@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 type TabType = 'topology' | 'settings' | 'analysis';
 
 interface TabNavigationProps {
