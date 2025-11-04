@@ -9,6 +9,7 @@ import { GaleraNodeForm } from './GaleraNodeForm';
 import { GaleraNodeList } from './GaleraNodeList';
 import { MaxScaleNodeForm } from './MaxScaleNodeForm';
 import { MaxScaleNodeList } from './MaxScaleNodeList';
+import { TopologyActions } from './TopologyActions';
 import type { Subnet, SubnetLink, Server, GaleraNode, MaxScaleNode } from '../../types';
 
 type FormType = 'subnet' | 'link' | 'server' | 'galera' | 'maxscale' | null;
@@ -67,47 +68,54 @@ export function TopologyView() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex-1">
           <h2 className="text-xl font-semibold text-gray-900">Topology Builder</h2>
           <p className="mt-1 text-sm text-gray-600">
             Define your infrastructure topology step by step
           </p>
         </div>
-        {!activeForm && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              onClick={() => handleShowForm('subnet')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-            >
-              + Subnet
-            </button>
-            <button
-              onClick={() => handleShowForm('link')}
-              className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-            >
-              + Link Subnets
-            </button>
-            <button
-              onClick={() => handleShowForm('server')}
-              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
-            >
-              + Server
-            </button>
-            <button
-              onClick={() => handleShowForm('galera')}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
-            >
-              + Galera Node
-            </button>
-            <button
-              onClick={() => handleShowForm('maxscale')}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
-            >
-              + MaxScale Node
-            </button>
-          </div>
-        )}
+        
+        <div className="flex flex-col gap-3">
+          {/* Save/Load/Reset Actions */}
+          <TopologyActions />
+          
+          {/* Add Entity Buttons */}
+          {!activeForm && (
+            <div className="flex flex-wrap gap-2 justify-end">
+              <button
+                onClick={() => handleShowForm('subnet')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+              >
+                + Subnet
+              </button>
+              <button
+                onClick={() => handleShowForm('link')}
+                className="px-4 py-2 bg-cyan-600 text-white rounded-md hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
+              >
+                + Link Subnets
+              </button>
+              <button
+                onClick={() => handleShowForm('server')}
+                className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm"
+              >
+                + Server
+              </button>
+              <button
+                onClick={() => handleShowForm('galera')}
+                className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
+              >
+                + Galera Node
+              </button>
+              <button
+                onClick={() => handleShowForm('maxscale')}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+              >
+                + MaxScale Node
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Forms */}
