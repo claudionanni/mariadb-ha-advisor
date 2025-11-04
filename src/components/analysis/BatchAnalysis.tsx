@@ -29,7 +29,7 @@ export function BatchAnalysis() {
     setIsAnalyzing(false);
   };
 
-  const hasTopology = topology.galeraNodes.length > 0;
+  const hasTopology = topology.databaseNodes.length > 0;
 
   if (!hasTopology) {
     return null;

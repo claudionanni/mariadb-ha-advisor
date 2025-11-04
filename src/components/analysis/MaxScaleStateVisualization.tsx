@@ -7,7 +7,8 @@ interface MaxScaleStateVisualizationProps {
 
 export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizationProps) {
   const maxscaleNodes = useTopologyStore((state) => state.topology.maxscaleNodes);
-  const galeraNodes = useTopologyStore((state) => state.topology.galeraNodes);
+  const databaseNodes = useTopologyStore((state) => state.topology.databaseNodes);
+  const clusterType = useTopologyStore((state) => state.topology.clusterType);
   
   if (!states) {
     return (
@@ -54,15 +55,15 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
         </div>
       </div>
 
-      {/* Cooperative Monitoring Info */}
-      {maxscaleNodes.length > 0 && maxscaleNodes[0].settings.cooperativeMonitoringLocks && (
+      {/* Cooperative Monitoring Info - only for Async Replica */}
+      {clusterType === 'async-replica' && maxscaleNodes.length > 0 && maxscaleNodes[0].settings.cooperativeMonitoringLocks && (
         <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
           <div className="text-xs text-blue-900 font-medium mb-1">
             ℹ️ Cooperative Monitoring Enabled
           </div>
           <div className="text-xs text-blue-700">
             Lock mode: <strong>{maxscaleNodes[0].settings.cooperativeMonitoringLocks?.replace('_', ' ')}</strong>
-            {' • '}Only one MaxScale actively manages the Galera cluster at a time to prevent conflicts.
+            {' • '}Only one MaxScale actively manages the cluster at a time to prevent conflicts.
           </div>
         </div>
       )}
@@ -123,32 +124,32 @@ export function MaxScaleStateVisualization({ states }: MaxScaleStateVisualizatio
                 {nodeState.state !== 'down' && (
                   <div className="mt-3 pt-3 border-t border-gray-200">
                     <div className="text-xs font-medium text-gray-600 mb-2">
-                      Visible Galera Nodes: {nodeState.visibleGaleraNodes.length}
+                      Visible Database Nodes: {nodeState.visibleGaleraNodes.length}
                     </div>
                     {nodeState.visibleGaleraNodes.length > 0 ? (
                       <div className="flex flex-wrap gap-1">
-                        {nodeState.visibleGaleraNodes.map((galeraId) => {
-                          const galeraNode = galeraNodes.find(n => n.id === galeraId);
+                        {nodeState.visibleGaleraNodes.map((dbId) => {
+                          const dbNode = databaseNodes.find(n => n.id === dbId);
                           return (
                             <span
-                              key={galeraId}
+                              key={dbId}
                               className="px-2 py-0.5 text-xs bg-emerald-100 text-emerald-800 rounded"
                             >
-                              {galeraNode?.name || galeraId}
+                              {dbNode?.name || dbId}
                             </span>
                           );
                         })}
                       </div>
                     ) : (
                       <div className="text-xs text-red-600">
-                        ⚠️ No Galera nodes visible - cannot route queries
+                        ⚠️ No database nodes visible - cannot route queries
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* Cooperative Monitoring Info */}
-                {node && nodeState.state !== 'down' && (
+                {/* Cooperative Monitoring Info - only for Async Replica */}
+                {clusterType === 'async-replica' && node && nodeState.state !== 'down' && (
                   <div className="mt-2 text-xs text-gray-500">
                     Lock mode: {node.settings.cooperativeMonitoringLocks?.replace('_', ' ') || 'none'}
                   </div>

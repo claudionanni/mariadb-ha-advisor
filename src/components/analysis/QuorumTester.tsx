@@ -6,8 +6,9 @@ export function QuorumTester() {
   const topology = useTopologyStore((state) => state.topology);
   
   const handleTestBasicScenario = () => {
-    if (topology.galeraNodes.length < 2) {
-      alert('Please add at least 2 Galera nodes to test HA analysis');
+    const databaseNodes = topology.databaseNodes;
+    if (databaseNodes.length < 2) {
+      alert('Please add at least 2 database nodes to test HA analysis');
       return;
     }
 
@@ -29,14 +30,14 @@ export function QuorumTester() {
     console.log('MaxScale States:', result1.maxscaleStates);
     console.log('Recommendations:', result1.recommendations);
     
-    // Test 2: One Galera node down
-    if (topology.galeraNodes.length >= 3) {
+    // Test 2: One database node down
+    if (databaseNodes.length >= 3) {
       const oneNodeDownScenario: FailureScenario = {
-        id: 'test-one-galera-down',
-        name: 'One Galera Node Down',
-        description: 'First Galera node is down',
+        id: 'test-one-db-down',
+        name: 'One Database Node Down',
+        description: 'First database node is down',
         failures: [{
-          targetId: topology.galeraNodes[0].id,
+          targetId: databaseNodes[0].id,
           type: 'node_down',
         }],
       };
@@ -70,7 +71,7 @@ export function QuorumTester() {
     alert('HA Analysis complete! Check browser console for detailed results.');
   };
 
-  const hasGaleraNodes = topology.galeraNodes.length > 0;
+  const hasDatabaseNodes = topology.databaseNodes.length > 0;
 
   return (
     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
@@ -80,7 +81,7 @@ export function QuorumTester() {
       </p>
       <button
         onClick={handleTestBasicScenario}
-        disabled={!hasGaleraNodes}
+        disabled={!hasDatabaseNodes}
         className="px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
       >
         Run HA Analysis Test

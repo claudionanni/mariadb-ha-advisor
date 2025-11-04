@@ -29,7 +29,7 @@ export function NetworkStateVisualization({
     const failedPhysicalServers = subnetServers.filter(s => failedServers.has(s.id)).length;
     
     // Count services on non-failed servers that are marked as failed
-    const galeraNodes = topology.galeraNodes.filter(n => 
+    const databaseNodes = topology.databaseNodes.filter(n => 
       subnetServers.some(s => s.id === n.serverId && !failedServers.has(s.id)) && failedNodes.has(n.id)
     );
     const maxscaleNodes = topology.maxscaleNodes.filter(n => 
@@ -38,19 +38,20 @@ export function NetworkStateVisualization({
     
     // If a physical server is down, count it as one failure regardless of services
     // Otherwise count individual service failures
-    return failedPhysicalServers + galeraNodes.length + maxscaleNodes.length;
+    return failedPhysicalServers + databaseNodes.length + maxscaleNodes.length;
   };
 
   // Get services on a server
   const getServerServices = (serverId: string) => {
     const services: string[] = [];
     const isServerDown = failedServers.has(serverId);
-    const galeraNode = topology.galeraNodes.find(n => n.serverId === serverId);
+    const databaseNode = topology.databaseNodes.find(n => n.serverId === serverId);
     const maxscaleNode = topology.maxscaleNodes.find(n => n.serverId === serverId);
     
-    if (galeraNode) {
-      const status = (isServerDown || failedNodes.has(galeraNode.id)) ? '❌' : '✅';
-      services.push(`${status} Galera: ${galeraNode.name}`);
+    if (databaseNode) {
+      const status = (isServerDown || failedNodes.has(databaseNode.id)) ? '❌' : '✅';
+      const nodeTypeLabel = databaseNode.nodeType === 'galera' ? 'Galera' : 'MariaDB';
+      services.push(`${status} ${nodeTypeLabel}: ${databaseNode.name}`);
     }
     if (maxscaleNode) {
       const status = (isServerDown || failedNodes.has(maxscaleNode.id)) ? '❌' : '✅';

@@ -44,10 +44,10 @@ export function TopologyActions() {
   };
 
   const hasContent = 
-    topology.subnets.length > 0 || 
-    topology.servers.length > 0 || 
-    topology.galeraNodes.length > 0 || 
-    topology.maxscaleNodes.length > 0;
+    (topology?.subnets?.length || 0) > 0 || 
+    (topology?.servers?.length || 0) > 0 || 
+    (topology?.databaseNodes?.length || 0) > 0 || 
+    (topology?.maxscaleNodes?.length || 0) > 0;
 
   return (
     <div className="flex items-center gap-2">

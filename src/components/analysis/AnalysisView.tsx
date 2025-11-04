@@ -10,7 +10,7 @@ export function AnalysisView() {
   const topology = useTopologyStore((state) => state.topology);
   const [mode, setMode] = useState<AnalysisMode>('interactive');
   
-  const hasTopology = topology.galeraNodes.length > 0;
+  const hasTopology = (topology?.databaseNodes?.length || 0) > 0;
 
   return (
     <div className="space-y-6">
@@ -22,7 +22,7 @@ export function AnalysisView() {
           </p>
         </div>
         
-        {hasTopology && (
+        {hasTopology && topology && (
           <div className="text-right">
             <div className="text-sm text-gray-600">Configuration:</div>
             <div className="text-lg font-semibold text-gray-900">{topology.name}</div>

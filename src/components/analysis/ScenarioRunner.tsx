@@ -13,7 +13,7 @@ export function ScenarioRunner() {
   const [analysisResult, setAnalysisResult] = useState<AnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
-  const hasGalera = topology.galeraNodes.length > 0;
+  const hasDatabaseNodes = topology.databaseNodes.length > 0;
   const hasMaxScale = topology.maxscaleNodes.length > 0;
 
   const presetScenarios: Array<{
@@ -35,35 +35,37 @@ export function ScenarioRunner() {
     },
   ];
 
-  // Add Galera failure scenarios
-  if (topology.galeraNodes.length > 0) {
+  // Add database node failure scenarios
+  if (topology.databaseNodes.length > 0) {
+    const nodeTypeLabel = topology.clusterType === 'galera' ? 'Galera' : 'Database';
+    
     presetScenarios.push({
-      id: 'one-galera-down',
-      name: '❌ One Galera Down',
-      description: `${topology.galeraNodes[0]?.name || 'First Galera'} node fails`,
+      id: 'one-db-down',
+      name: `❌ One ${nodeTypeLabel} Down`,
+      description: `${topology.databaseNodes[0]?.name || 'First node'} fails`,
       generator: () => ({
-        id: 'one-galera-down',
-        name: 'One Galera Node Down',
-        description: 'Single Galera node failure',
+        id: 'one-db-down',
+        name: `One ${nodeTypeLabel} Node Down`,
+        description: `Single ${nodeTypeLabel} node failure`,
         failures: [{
-          targetId: topology.galeraNodes[0].id,
+          targetId: topology.databaseNodes[0].id,
           type: 'node_down',
         }],
       }),
     });
 
-    if (topology.galeraNodes.length >= 2) {
+    if (topology.databaseNodes.length >= 2) {
       presetScenarios.push({
-        id: 'two-galera-down',
-        name: '❌❌ Two Galera Down',
-        description: 'Multiple Galera node failures',
+        id: 'two-db-down',
+        name: `❌❌ Two ${nodeTypeLabel} Down`,
+        description: `Multiple ${nodeTypeLabel} node failures`,
         generator: () => ({
-          id: 'two-galera-down',
-          name: 'Two Galera Nodes Down',
-          description: 'Multiple Galera node failures',
+          id: 'two-db-down',
+          name: `Two ${nodeTypeLabel} Nodes Down`,
+          description: `Multiple ${nodeTypeLabel} node failures`,
           failures: [
-            { targetId: topology.galeraNodes[0].id, type: 'node_down' },
-            { targetId: topology.galeraNodes[1].id, type: 'node_down' },
+            { targetId: topology.databaseNodes[0].id, type: 'node_down' },
+            { targetId: topology.databaseNodes[1].id, type: 'node_down' },
           ],
         }),
       });
@@ -122,11 +124,11 @@ export function ScenarioRunner() {
     }, 100);
   };
 
-  if (!hasGalera) {
+  if (!hasDatabaseNodes) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
         <p className="text-yellow-800">
-          ⚠️ Add Galera nodes to your topology to run failure analysis.
+          ⚠️ Add database nodes to your topology to run failure analysis.
         </p>
       </div>
     );

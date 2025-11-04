@@ -1,9 +1,13 @@
 import { useTopologyStore } from '../../store/topologyStore';
+import type { GaleraNode, AsyncReplicaNode } from '../../types';
 
 export function SettingsView() {
   const topology = useTopologyStore((state) => state.topology);
   
-  const hasNodes = topology.galeraNodes.length > 0 || topology.maxscaleNodes.length > 0;
+  const galeraNodes = topology.databaseNodes.filter(n => n.nodeType === 'galera') as GaleraNode[];
+  const asyncNodes = topology.databaseNodes.filter(n => n.nodeType === 'async_replica') as AsyncReplicaNode[];
+  
+  const hasNodes = topology.databaseNodes.length > 0 || topology.maxscaleNodes.length > 0;
 
   return (
     <div className="bg-white rounded-lg shadow p-6">
@@ -14,11 +18,11 @@ export function SettingsView() {
         </div>
       ) : (
         <div className="space-y-6">
-          {topology.galeraNodes.length > 0 && (
+          {galeraNodes.length > 0 && (
             <div>
               <h3 className="text-lg font-medium mb-3">Galera Nodes</h3>
               <div className="space-y-2">
-                {topology.galeraNodes.map((node) => (
+                {galeraNodes.map((node) => (
                   <div
                     key={node.id}
                     className="p-4 border border-gray-200 rounded hover:border-blue-300"
@@ -26,6 +30,27 @@ export function SettingsView() {
                     <div className="font-medium">{node.name}</div>
                     <div className="text-sm text-gray-600 mt-1">
                       Weight: {node.settings.pcWeight}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          
+          {asyncNodes.length > 0 && (
+            <div>
+              <h3 className="text-lg font-medium mb-3">Async Replica Nodes</h3>
+              <div className="space-y-2">
+                {asyncNodes.map((node) => (
+                  <div
+                    key={node.id}
+                    className="p-4 border border-gray-200 rounded hover:border-blue-300"
+                  >
+                    <div className="font-medium">{node.name}</div>
+                    <div className="text-sm text-gray-600 mt-1">
+                      Role: {node.settings.role === 'primary' ? '🔷 Primary' : '🔶 Replica'}
+                      {node.settings.readOnly !== undefined && 
+                        ` • Read Only: ${node.settings.readOnly ? 'Yes' : 'No'}`}
                     </div>
                   </div>
                 ))}

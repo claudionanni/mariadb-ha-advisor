@@ -1,12 +1,14 @@
 import type { GaleraClusterState } from '../../types';
 import { useTopologyStore } from '../../store/topologyStore';
+import { getGaleraNodes } from '../../utils/topologyHelpers';
 
 interface GaleraStateVisualizationProps {
   state?: GaleraClusterState;
 }
 
 export function GaleraStateVisualization({ state }: GaleraStateVisualizationProps) {
-  const galeraNodes = useTopologyStore((state) => state.topology.galeraNodes);
+  const topology = useTopologyStore((state) => state.topology);
+  const galeraNodes = getGaleraNodes(topology);
   
   if (!state) {
     return (
