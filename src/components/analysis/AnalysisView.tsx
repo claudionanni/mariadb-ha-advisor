@@ -2,12 +2,13 @@ import { useState } from 'react';
 import { useTopologyStore } from '../../store/topologyStore';
 import { ScenarioRunner } from './ScenarioRunner';
 import { BatchAnalysis } from './BatchAnalysis';
+import { InteractiveScenarioBuilder } from './InteractiveScenarioBuilder';
 
-type AnalysisMode = 'single' | 'batch';
+type AnalysisMode = 'interactive' | 'preset' | 'batch';
 
 export function AnalysisView() {
   const topology = useTopologyStore((state) => state.topology);
-  const [mode, setMode] = useState<AnalysisMode>('single');
+  const [mode, setMode] = useState<AnalysisMode>('interactive');
   
   const hasTopology = topology.galeraNodes.length > 0;
 
@@ -36,11 +37,11 @@ export function AnalysisView() {
         <>
           {/* Mode Selector */}
           <div className="bg-white rounded-lg border border-gray-200 p-4">
-            <div className="flex gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={() => setMode('single')}
-                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-                  mode === 'single'
+                onClick={() => setMode('interactive')}
+                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                  mode === 'interactive'
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
@@ -48,15 +49,32 @@ export function AnalysisView() {
                 <div className="flex items-center justify-center gap-2">
                   <span>🎯</span>
                   <div className="text-left">
-                    <div className="text-sm">Single Scenario</div>
-                    <div className="text-xs opacity-75">Test individual failures</div>
+                    <div className="text-sm">Interactive</div>
+                    <div className="text-xs opacity-75">Click nodes to fail</div>
+                  </div>
+                </div>
+              </button>
+              
+              <button
+                onClick={() => setMode('preset')}
+                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
+                  mode === 'preset'
+                    ? 'bg-green-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <span>📋</span>
+                  <div className="text-left">
+                    <div className="text-sm">Preset</div>
+                    <div className="text-xs opacity-75">Common scenarios</div>
                   </div>
                 </div>
               </button>
               
               <button
                 onClick={() => setMode('batch')}
-                className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+                className={`px-4 py-3 rounded-lg font-medium transition-colors ${
                   mode === 'batch'
                     ? 'bg-purple-600 text-white'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -65,8 +83,8 @@ export function AnalysisView() {
                 <div className="flex items-center justify-center gap-2">
                   <span>⚡</span>
                   <div className="text-left">
-                    <div className="text-sm">Batch Analysis</div>
-                    <div className="text-xs opacity-75">Test all combinations</div>
+                    <div className="text-sm">Batch</div>
+                    <div className="text-xs opacity-75">Test all</div>
                   </div>
                 </div>
               </button>
@@ -74,7 +92,9 @@ export function AnalysisView() {
           </div>
 
           {/* Content */}
-          {mode === 'single' ? <ScenarioRunner /> : <BatchAnalysis />}
+          {mode === 'interactive' && <InteractiveScenarioBuilder />}
+          {mode === 'preset' && <ScenarioRunner />}
+          {mode === 'batch' && <BatchAnalysis />}
         </>
       )}
     </div>
